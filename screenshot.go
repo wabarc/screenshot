@@ -2,7 +2,9 @@ package screenshot
 
 import (
 	"context"
+	"log"
 	"math"
+	"os"
 
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/page"
@@ -25,7 +27,21 @@ type chromeRemoteScreenshoter struct {
 }
 
 func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption) ([]Screenshots, error) {
-	ctxt, cancel := chromedp.NewContext(ctx)
+	var allocOpts = chromedp.DefaultExecAllocatorOptions[:]
+	if noSandbox := os.Getenv("CHROMEDP_NO_SANDBOX"); noSandbox != "" && noSandbox != "false" {
+		allocOpts = append(allocOpts, chromedp.NoSandbox)
+	}
+	if disableGPU := os.Getenv("CHROMEDP_DISABLE_GPU"); disableGPU != "" && disableGPU != "false" {
+		allocOpts = append(allocOpts, chromedp.DisableGPU)
+	}
+	allocCtx, cancel := chromedp.NewExecAllocator(ctx, allocOpts...)
+	defer cancel()
+
+	var browserOpts []chromedp.ContextOption
+	if debug := os.Getenv("CHROMEDP_DEBUG"); debug != "" && debug != "false" {
+		browserOpts = append(browserOpts, chromedp.WithDebugf(log.Printf))
+	}
+	ctxt, cancel := chromedp.NewContext(allocCtx, browserOpts...)
 	defer cancel()
 
 	var opts ScreenshotOptions
