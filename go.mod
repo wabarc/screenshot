@@ -1,10 +1,10 @@
 module github.com/wabarc/screenshot
 
-go 1.14
+go 1.15
 
 require (
-	github.com/chromedp/cdproto v0.0.0-20200709115526-d1f6fc58448b
-	github.com/chromedp/chromedp v0.5.3
-	github.com/wabarc/helper v0.0.0-20210126145229-dfdcfa4712ec
-	golang.org/x/sys v0.0.0-20200930185726-fdedc70b468f // indirect
+	github.com/chromedp/cdproto v0.0.0-20210126020047-7ec7357d1463
+	github.com/chromedp/chromedp v0.6.5
+	github.com/wabarc/helper v0.0.0-20210127120855-10af37cc2616
+	golang.org/x/sys v0.0.0-20210124154548-22da62e12c0c // indirect
 )
