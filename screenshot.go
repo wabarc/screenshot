@@ -9,18 +9,22 @@ import (
 	"github.com/chromedp/chromedp"
 )
 
-type Screenshots map[string][]byte
+type Screenshots struct {
+	URL   string
+	Title string
+	Data  []byte
+}
 
 // Screenshoter is a webpage screenshot interface.
 type Screenshoter interface {
-	Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption) (Screenshots, error)
+	Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption) ([]Screenshots, error)
 }
 
 type chromeRemoteScreenshoter struct {
 	url string
 }
 
-func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption) (Screenshots, error) {
+func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption) ([]Screenshots, error) {
 	ctxt, cancel := chromedp.NewContext(ctx)
 	defer cancel()
 
@@ -29,21 +33,26 @@ func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption)
 		o(&opts)
 	}
 
-	screenshots := make(Screenshots, len(urls))
+	screenshots := make([]Screenshots, 0, len(urls))
 	for _, url := range urls {
 		var buf []byte
+		var title string
 		captureAction := screenshotAction(url, 90, &buf)
 
-		err := chromedp.Run(ctxt,
+		if err := chromedp.Run(ctxt,
 			// emulation.SetDeviceMetricsOverride(opts.Width, opts.Height, opts.ScaleFactor, opts.Mobile),
-			// chromedp.Navigate(url),
+			chromedp.Navigate(url),
+			chromedp.Title(&title),
 			captureAction,
 			// closePageAction(),
-		)
-		if err != nil {
+		); err != nil {
 			buf = nil
 		}
-		screenshots[url] = buf
+		screenshots = append(screenshots, Screenshots{
+			URL:   url,
+			Data:  buf,
+			Title: title,
+		})
 	}
 
 	return screenshots, nil

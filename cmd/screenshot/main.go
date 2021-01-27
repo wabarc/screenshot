@@ -37,9 +37,8 @@ func main() {
 	}
 
 	urls := helper.MatchURL(str)
-	fmt.Println(urls)
 
-	buf, err := screenshot.Screenshot(ctx, urls, screenshot.ScaleFactorScreenshotOption(1))
+	shots, err := screenshot.Screenshot(ctx, urls, screenshot.ScaleFactorScreenshotOption(1))
 	if err != nil {
 		if err == context.DeadlineExceeded {
 			fmt.Println(err.Error())
@@ -49,9 +48,13 @@ func main() {
 		return
 	}
 
-	for link, b := range buf {
-		if err := ioutil.WriteFile(helper.FileName(link, "image/png"), b, 0o644); err != nil {
+	for _, shot := range shots {
+		if shot.URL == "" || shot.Data == nil {
+			continue
+		}
+		if err := ioutil.WriteFile(helper.FileName(shot.URL, "image/png"), shot.Data, 0o644); err != nil {
 			fmt.Println(err)
+			continue
 		}
 	}
 }

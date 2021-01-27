@@ -3,7 +3,7 @@ export GOPROXY = https://proxy.golang.org
 
 ORGNAME := wabarc
 PROJECT := screenshot
-SRCPATH ?= /go/src/github.com/${ORGNAME}/${PROJECT}
+HOMEDIR ?= /go/src/github.com/${ORGNAME}
 DOCKER ?= $(shell which docker || which podman)
 IMAGE := wabarc/golang-chromium:dev
 
@@ -15,15 +15,15 @@ fmt:
 
 run:
 	@echo "-> Running docker container"
-	$(DOCKER) run -ti --rm -v ${PWD}:${SRCPATH} ${IMAGE} sh -c "\
-		cd ${SRCPATH} && \
+	$(DOCKER) run -ti --rm -v ${PWD}/../:${HOMEDIR} ${IMAGE} sh -c "\
+		cd ${HOMEDIR}/${PROJECT} && \
 		go get -v && \
 		sh"
 
 test:
 	@echo "-> Running go test"
-	$(DOCKER) run -ti --rm -v ${PWD}:${SRCPATH} ${IMAGE} sh -c "\
-		cd ${SRCPATH} && \
+	$(DOCKER) run -ti --rm -v ${PWD}/../:${HOMEDIR} ${IMAGE} sh -c "\
+		cd ${HOMEDIR}/${PROJECT} && \
 		go test -v ./..."
 
 vet:
