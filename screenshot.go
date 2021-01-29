@@ -8,6 +8,7 @@ import (
 
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/page"
+	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 )
 
@@ -82,6 +83,14 @@ func screenshotAction(url string, quality int64, res *[]byte) chromedp.Action {
 		chromedp.ActionFunc(func(ctx context.Context) (err error) {
 			if res == nil {
 				return
+			}
+
+			_, exp, err := runtime.Evaluate(`window.scrollTo(0,document.body.scrollHeight);`).Do(ctx)
+			if err != nil {
+				return err
+			}
+			if exp != nil {
+				return exp
 			}
 
 			// get layout metrics
