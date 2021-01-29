@@ -54,7 +54,7 @@ func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption)
 	for _, url := range urls {
 		var buf []byte
 		var title string
-		captureAction := screenshotAction(url, 90, &buf)
+		captureAction := screenshotAction(url, opts.Quality, &buf, opts)
 
 		if err := chromedp.Run(ctxt,
 			// emulation.SetDeviceMetricsOverride(opts.Width, opts.Height, opts.ScaleFactor, opts.Mobile),
@@ -76,7 +76,7 @@ func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption)
 }
 
 // Note: this will override the viewport emulation settings.
-func screenshotAction(url string, quality int64, res *[]byte) chromedp.Action {
+func screenshotAction(url string, quality int64, res *[]byte, options ScreenshotOptions) chromedp.Action {
 	return chromedp.Tasks{
 		chromedp.Navigate(url),
 		chromedp.WaitReady("body"),
@@ -111,6 +111,10 @@ func screenshotAction(url string, quality int64, res *[]byte) chromedp.Action {
 				return err
 			}
 
+			// Limit dimensions
+			if options.MaxHeight >0 && contentSize.Height > float64(options.MaxHeight) {
+				contentSize.Height = float64(options.MaxHeight)
+			}
 			// params.Format = page.CaptureScreenshotFormatJpeg
 			*res, err = page.CaptureScreenshot().
 				WithQuality(quality).
@@ -142,36 +146,58 @@ type ScreenshotOptions struct {
 	Mobile bool
 	Format string // jpg, png, default: png.
 
+	Quality int64
+	MaxWidth  int64
+	MaxHeight int64
+
 	ScaleFactor float64
 }
 
 type ScreenshotOption func(*ScreenshotOptions)
 
-func WidthScreenshotOption(width int64) ScreenshotOption {
+func Width(width int64) ScreenshotOption {
 	return func(opts *ScreenshotOptions) {
 		opts.Width = width
 	}
 }
 
-func HeightScreenshotOption(height int64) ScreenshotOption {
+func Height(height int64) ScreenshotOption {
 	return func(opts *ScreenshotOptions) {
 		opts.Height = height
 	}
 }
 
-func ScaleFactorScreenshotOption(factor float64) ScreenshotOption {
+func Quality(quality int64) ScreenshotOption {
+	return func(opts *ScreenshotOptions) {
+		opts.Quality = quality
+	}
+}
+
+func MaxWidth(width int64) ScreenshotOption {
+	return func(opts *ScreenshotOptions) {
+		opts.MaxWidth = width
+	}
+}
+
+func MaxHeight(height int64) ScreenshotOption {
+	return func(opts *ScreenshotOptions) {
+		opts.MaxHeight = height
+	}
+}
+
+func ScaleFactor(factor float64) ScreenshotOption {
 	return func(opts *ScreenshotOptions) {
 		opts.ScaleFactor = factor
 	}
 }
 
-func MobileScreenshotOption(b bool) ScreenshotOption {
+func Mobile(b bool) ScreenshotOption {
 	return func(opts *ScreenshotOptions) {
 		opts.Mobile = b
 	}
 }
 
-func FormatScreenshotOption(format string) ScreenshotOption {
+func Format(format string) ScreenshotOption {
 	return func(opts *ScreenshotOptions) {
 		opts.Format = format
 	}
