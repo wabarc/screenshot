@@ -5,6 +5,8 @@ import (
 	"log"
 	"math"
 	"os"
+	"sync"
+	"time"
 
 	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/page"
@@ -28,6 +30,7 @@ type chromeRemoteScreenshoter struct {
 }
 
 func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption) ([]Screenshots, error) {
+	// https://github.com/chromedp/chromedp/blob/b56cd66f9cebd6a1fa1283847bbf507409d48225/allocate.go#L53
 	var allocOpts = chromedp.DefaultExecAllocatorOptions[:]
 	if noSandbox := os.Getenv("CHROMEDP_NO_SANDBOX"); noSandbox != "" && noSandbox != "false" {
 		allocOpts = append(allocOpts, chromedp.NoSandbox)
@@ -42,7 +45,7 @@ func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption)
 	if debug := os.Getenv("CHROMEDP_DEBUG"); debug != "" && debug != "false" {
 		browserOpts = append(browserOpts, chromedp.WithDebugf(log.Printf))
 	}
-	ctxt, cancel := chromedp.NewContext(allocCtx, browserOpts...)
+	windowCtx, cancel := chromedp.NewContext(allocCtx, browserOpts...)
 	defer cancel()
 
 	var opts ScreenshotOptions
@@ -50,27 +53,56 @@ func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption)
 		o(&opts)
 	}
 
+	// run a no-op action to allocate the browser
+	// if err := chromedp.Run(windowCtx, chromedp.ActionFunc(func(_ context.Context) error {
+	// 	return nil
+	// })); err != nil {
+	// 	return nil, err
+	// }
+
+	var wg sync.WaitGroup
 	screenshots := make([]Screenshots, 0, len(urls))
 	for _, url := range urls {
-		var buf []byte
-		var title string
-		captureAction := screenshotAction(url, opts.Quality, &buf, opts)
+		wg.Add(1)
+		go func(url string) {
+			var buf []byte
+			var title string
+			captureAction := screenshotAction(url, opts.Quality, &buf, opts)
+			tabCtx, _ := chromedp.NewContext(windowCtx)
 
-		if err := chromedp.Run(ctxt,
-			// emulation.SetDeviceMetricsOverride(opts.Width, opts.Height, opts.ScaleFactor, opts.Mobile),
-			chromedp.Navigate(url),
-			chromedp.Title(&title),
-			captureAction,
-			// closePageAction(),
-		); err != nil {
-			buf = nil
-		}
-		screenshots = append(screenshots, Screenshots{
-			URL:   url,
-			Data:  buf,
-			Title: title,
-		})
+			chromedp.ListenTarget(tabCtx, func(ev interface{}) {
+				if _, ok := ev.(*page.EventJavascriptDialogOpening); ok {
+					go func() {
+						if err := chromedp.Run(tabCtx,
+							page.HandleJavaScriptDialog(false),
+						); err != nil {
+							log.Print(err)
+						}
+					}()
+				}
+			})
+
+			if err := chromedp.Run(tabCtx, chromedp.Tasks{
+				// emulation.SetDeviceMetricsOverride(opts.Width, opts.Height, opts.ScaleFactor, opts.Mobile),
+				chromedp.Navigate(url),
+				chromedp.Sleep(2 * time.Second),
+				chromedp.Title(&title),
+				chromedp.WaitReady("body"),
+				captureAction,
+				// closePageAction(),
+			}); err != nil {
+				log.Print(err)
+				buf = nil
+			}
+			screenshots = append(screenshots, Screenshots{
+				URL:   url,
+				Data:  buf,
+				Title: title,
+			})
+			wg.Done()
+		}(url)
 	}
+	wg.Wait()
 
 	return screenshots, nil
 }
@@ -78,13 +110,14 @@ func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption)
 // Note: this will override the viewport emulation settings.
 func screenshotAction(url string, quality int64, res *[]byte, options ScreenshotOptions) chromedp.Action {
 	return chromedp.Tasks{
-		chromedp.Navigate(url),
+		enableLifeCycleEvents(),
+		// chromedp.Navigate(url),
+		navigateAndWaitFor(url, "networkIdle"),
 		chromedp.WaitReady("body"),
 		chromedp.ActionFunc(func(ctx context.Context) (err error) {
 			if res == nil {
-				return
+				return nil
 			}
-
 			_, exp, err := runtime.Evaluate(`window.scrollTo(0,document.body.scrollHeight);`).Do(ctx)
 			if err != nil {
 				return err
@@ -112,9 +145,10 @@ func screenshotAction(url string, quality int64, res *[]byte, options Screenshot
 			}
 
 			// Limit dimensions
-			if options.MaxHeight >0 && contentSize.Height > float64(options.MaxHeight) {
+			if options.MaxHeight > 0 && contentSize.Height > float64(options.MaxHeight) {
 				contentSize.Height = float64(options.MaxHeight)
 			}
+
 			// params.Format = page.CaptureScreenshotFormatJpeg
 			*res, err = page.CaptureScreenshot().
 				WithQuality(quality).
@@ -139,6 +173,62 @@ func closePageAction() chromedp.Action {
 	})
 }
 
+func enableLifeCycleEvents() chromedp.ActionFunc {
+	return func(ctx context.Context) error {
+		err := page.Enable().Do(ctx)
+		if err != nil {
+			return err
+		}
+		err = page.SetLifecycleEventsEnabled(true).Do(ctx)
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+}
+
+func navigateAndWaitFor(url string, eventName string) chromedp.ActionFunc {
+	return func(ctx context.Context) error {
+		_, _, _, err := page.Navigate(url).Do(ctx)
+		if err != nil {
+			return err
+		}
+
+		return waitFor(ctx, eventName)
+	}
+}
+
+// waitFor blocks until eventName is received.
+// Examples of events you can wait for:
+//     init, DOMContentLoaded, firstPaint,
+//     firstContentfulPaint, firstImagePaint,
+//     firstMeaningfulPaintCandidate,
+//     load, networkAlmostIdle, firstMeaningfulPaint, networkIdle
+//
+// This is not super reliable, I've already found incidental cases where
+// networkIdle was sent before load. It's probably smart to see how
+// puppeteer implements this exactly.
+func waitFor(ctx context.Context, eventName string) error {
+	ch := make(chan struct{})
+	cctx, cancel := context.WithCancel(ctx)
+	chromedp.ListenTarget(cctx, func(ev interface{}) {
+		switch e := ev.(type) {
+		case *page.EventLifecycleEvent:
+			if e.Name == eventName {
+				cancel()
+				close(ch)
+			}
+		}
+	})
+	select {
+	case <-ch:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+
+}
+
 // ScreenshotOptions is the options used by Screenshot.
 type ScreenshotOptions struct {
 	Width  int64
@@ -146,7 +236,7 @@ type ScreenshotOptions struct {
 	Mobile bool
 	Format string // jpg, png, default: png.
 
-	Quality int64
+	Quality   int64
 	MaxWidth  int64
 	MaxHeight int64
 

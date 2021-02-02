@@ -41,7 +41,7 @@ func TestScreenshot(t *testing.T) {
 	defer ts.Close()
 
 	urls := []string{ts.URL}
-	shots, err := Screenshot(ctx, urls, ScaleFactorScreenshotOption(1))
+	shots, err := Screenshot(ctx, urls, ScaleFactor(1))
 	if err != nil {
 		t.Log(urls)
 		if err == context.DeadlineExceeded {

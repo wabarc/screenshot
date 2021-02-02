@@ -38,7 +38,7 @@ func main() {
 
 	urls := helper.MatchURL(str)
 
-	shots, err := screenshot.Screenshot(ctx, urls, screenshot.ScaleFactorScreenshotOption(1))
+	shots, err := screenshot.Screenshot(ctx, urls, screenshot.ScaleFactor(1))
 	if err != nil {
 		if err == context.DeadlineExceeded {
 			fmt.Println(err.Error())
