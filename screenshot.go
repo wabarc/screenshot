@@ -67,7 +67,7 @@ func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption)
 		go func(url string) {
 			var buf []byte
 			var title string
-			captureAction := screenshotAction(url, opts.Quality, &buf, opts)
+			captureAction := screenshotAction(url, &buf, opts)
 			tabCtx, _ := chromedp.NewContext(windowCtx)
 
 			chromedp.ListenTarget(tabCtx, func(ev interface{}) {
@@ -108,7 +108,7 @@ func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption)
 }
 
 // Note: this will override the viewport emulation settings.
-func screenshotAction(url string, quality int64, res *[]byte, options ScreenshotOptions) chromedp.Action {
+func screenshotAction(url string, res *[]byte, options ScreenshotOptions) chromedp.Action {
 	return chromedp.Tasks{
 		enableLifeCycleEvents(),
 		// chromedp.Navigate(url),
@@ -149,9 +149,9 @@ func screenshotAction(url string, quality int64, res *[]byte, options Screenshot
 				contentSize.Height = float64(options.MaxHeight)
 			}
 
-			// params.Format = page.CaptureScreenshotFormatJpeg
 			*res, err = page.CaptureScreenshot().
-				WithQuality(quality).
+				WithQuality(options.Quality).
+				WithFormat(options.Format).
 				WithClip(&page.Viewport{
 					X:      contentSize.X,
 					Y:      contentSize.Y,
@@ -234,7 +234,7 @@ type ScreenshotOptions struct {
 	Width  int64
 	Height int64
 	Mobile bool
-	Format string // jpg, png, default: png.
+	Format page.CaptureScreenshotFormat // jpg, png, default: png.
 
 	Quality   int64
 	MaxWidth  int64
@@ -289,6 +289,12 @@ func Mobile(b bool) ScreenshotOption {
 
 func Format(format string) ScreenshotOption {
 	return func(opts *ScreenshotOptions) {
-		opts.Format = format
+		switch format {
+		default:
+		case "png":
+			opts.Format = page.CaptureScreenshotFormatPng
+		case "jpg", "jpeg":
+			opts.Format = page.CaptureScreenshotFormatJpeg
+		}
 	}
 }

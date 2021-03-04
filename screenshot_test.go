@@ -18,11 +18,8 @@ func writeHTML(content string) http.Handler {
 	})
 }
 
-func TestScreenshot(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
-	defer cancel()
-
-	ts := httptest.NewServer(writeHTML(`
+func newServer() *httptest.Server {
+	return httptest.NewServer(writeHTML(`
 <html>
 <head>
     <title>Example Domain</title>
@@ -37,7 +34,14 @@ func TestScreenshot(t *testing.T) {
 </div>
 </body>
 </html>
-	`))
+`))
+}
+
+func TestScreenshot(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	ts := newServer()
 	defer ts.Close()
 
 	urls := []string{ts.URL}
@@ -65,5 +69,46 @@ func TestScreenshot(t *testing.T) {
 		if shot.Data == nil {
 			t.Fail()
 		}
+	}
+}
+
+func TestScreenshotFormat(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	ts := newServer()
+	defer ts.Close()
+
+	urls := []string{ts.URL}
+	shots, err := Screenshot(ctx, urls, Format("png"))
+	if err != nil {
+		t.Fatal(err.Error(), http.StatusServiceUnavailable)
+	}
+	shot := shots[0]
+	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
+		t.Fail()
+	}
+	if shot.Title != "Example Domain" || shot.Data == nil {
+		t.Fatalf("screenshots empty, title: %s, data: %v", shot.Title, shot.Data)
+	}
+	contentType := http.DetectContentType(shot.Data)
+	if contentType != "image/png" {
+		t.Fatalf("content type should be image/png, got: %s", contentType)
+	}
+
+	shots, err = Screenshot(ctx, urls, Format("jpg"))
+	if err != nil {
+		t.Fatal(err.Error(), http.StatusServiceUnavailable)
+	}
+	shot = shots[0]
+	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
+		t.Fail()
+	}
+	if shot.Title != "Example Domain" || shot.Data == nil {
+		t.Fatalf("screenshots empty, title: %s, data: %v", shot.Title, shot.Data)
+	}
+	contentType = http.DetectContentType(shot.Data)
+	if contentType != "image/jpeg" {
+		t.Fatalf("content type should be image/jpeg, got: %s", contentType)
 	}
 }

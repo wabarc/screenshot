@@ -5,6 +5,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 	"time"
 
@@ -14,8 +15,10 @@ import (
 
 func main() {
 	var timeout uint64
+	var format string
 
 	flag.Uint64Var(&timeout, "timeout", 60, "Screenshot timeout")
+	flag.StringVar(&format, "format", "png", "Screenshot file format, default: png")
 
 	flag.Parse()
 
@@ -38,7 +41,7 @@ func main() {
 
 	urls := helper.MatchURL(str)
 
-	shots, err := screenshot.Screenshot(ctx, urls, screenshot.ScaleFactor(1))
+	shots, err := screenshot.Screenshot(ctx, urls, screenshot.ScaleFactor(1), screenshot.Format(format))
 	if err != nil {
 		if err == context.DeadlineExceeded {
 			fmt.Println(err.Error())
@@ -52,7 +55,7 @@ func main() {
 		if shot.URL == "" || shot.Data == nil {
 			continue
 		}
-		if err := ioutil.WriteFile(helper.FileName(shot.URL, "image/png"), shot.Data, 0o644); err != nil {
+		if err := ioutil.WriteFile(helper.FileName(shot.URL, http.DetectContentType(shot.Data)), shot.Data, 0o644); err != nil {
 			fmt.Println(err)
 			continue
 		}
