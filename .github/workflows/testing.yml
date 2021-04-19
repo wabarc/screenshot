@@ -22,6 +22,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
+        os: [ ubuntu-latest, macos-latest, windows-latest ]
         go: [ "1.13", "1.14", "1.15", "1.16" ]
     steps:
     - name: Set up Go 1.x
@@ -29,12 +30,13 @@ jobs:
       with:
         go-version: ${{ matrix.go }}
 
+    - name: Set up Chrome
+      uses: browser-actions/setup-chrome@latest
+      with:
+        chrome-version: stable
+
     - name: Check out code into the Go module directory
       uses: actions/checkout@v2
-
-    - name: Install packages
-      run: |
-        sudo apt install -y dumb-init dbus curl make gcc g++ binutils-dev gnupg libstdc++6 libnss3-dev chromium-browser
 
     - name: Get dependencies
       run: |
@@ -47,5 +49,8 @@ jobs:
         key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
         restore-keys: ${{ runner.os }}-go-
 
-    - name: Test
-      run: go test -v ./...
+    - name: Run test
+      env:
+        CGO_ENABLED: 1
+      run: |
+        go test -v -race -cover -covermode=atomic ./...

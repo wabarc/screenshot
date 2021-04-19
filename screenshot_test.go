@@ -10,6 +10,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/wabarc/helper"
 )
 
 func writeHTML(content string) http.Handler {
@@ -80,30 +82,24 @@ func TestScreenshotWithRemote(t *testing.T) {
 	ts := newServer()
 	defer ts.Close()
 
-	cmd := exec.Command("chromium-browser", "--headless", "--disable-gpu", "--no-sandbox", "--remote-debugging-port=9222")
+	binPath := helper.FindChromeExecPath()
+	if binPath == "" {
+		t.Skip("Chrome headless browser no found, skipped")
+	}
+
+	cmd := exec.Command(binPath, "--headless", "--disable-gpu", "--no-sandbox", "--remote-debugging-port=9222")
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("Start Chromium headless failed: %v", err)
 	}
-	done := make(chan error, 1)
 	go func() {
-		done <- cmd.Wait()
-		select {
-		case <-time.After(60 * time.Second):
-			if err := cmd.Process.Kill(); err != nil {
-				t.Errorf("Failed to kill process: %v", err)
-			}
-			t.Log("Process killed as timeout reached")
-		case err := <-done:
-			if err != nil {
-				t.Errorf("Process finished with error: %v", err)
-			}
-			if err := cmd.Process.Kill(); err != nil {
-				t.Errorf("Failed to kill process: %v", err)
-			}
-			t.Log("Process finished successfully")
-		}
+		cmd.Wait()
 	}()
 	time.Sleep(3 * time.Second)
+	defer func() {
+		if err := cmd.Process.Kill(); err != nil {
+			t.Errorf("Failed to kill process: %v", err)
+		}
+	}()
 
 	urls := []string{ts.URL}
 	remote, err := NewChromeRemoteScreenshoter("127.0.0.1:9222")
@@ -115,11 +111,9 @@ func TestScreenshotWithRemote(t *testing.T) {
 		t.Log(urls)
 		if err == context.DeadlineExceeded {
 			t.Error(err.Error(), http.StatusRequestTimeout)
-			done <- err
 			return
 		}
 		t.Error(err.Error(), http.StatusServiceUnavailable)
-		done <- err
 		return
 	}
 
@@ -137,7 +131,6 @@ func TestScreenshotWithRemote(t *testing.T) {
 			t.Fail()
 		}
 	}
-	done <- nil
 }
 
 func TestScreenshotFormat(t *testing.T) {
