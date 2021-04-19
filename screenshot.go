@@ -2,9 +2,13 @@ package screenshot
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"log"
 	"math"
+	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -29,6 +33,43 @@ type chromeRemoteScreenshoter struct {
 	url string
 }
 
+// NewChromeRemoteScreenshoter creates a Screenshoter backed by Chrome DevTools Protocol.
+// The addr is the headless chrome websocket debugger endpoint, such as 127.0.0.1:9222.
+func NewChromeRemoteScreenshoter(addr string) (Screenshoter, error) {
+	// Due to issue#505 (https://github.com/chromedp/chromedp/issues/505),
+	// chrome restricts the host must be IP or localhost, we should rewrite the url.
+	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/json/version", addr), nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Host = "localhost"
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	var result map[string]interface{}
+	if err = json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+
+	return &chromeRemoteScreenshoter{
+		url: strings.Replace(result["webSocketDebuggerUrl"].(string), "localhost", addr, 1),
+	}, nil
+}
+
+func (s *chromeRemoteScreenshoter) Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption) ([]Screenshots, error) {
+	if s.url == "" {
+		return nil, fmt.Errorf("Can't connect to headless browser")
+	}
+
+	allocCtx, cancel := chromedp.NewRemoteAllocator(ctx, s.url)
+	defer cancel()
+
+	return screenshotStart(allocCtx, urls, options...)
+}
+
 func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption) ([]Screenshots, error) {
 	// https://github.com/chromedp/chromedp/blob/b56cd66f9cebd6a1fa1283847bbf507409d48225/allocate.go#L53
 	var allocOpts = chromedp.DefaultExecAllocatorOptions[:]
@@ -41,6 +82,10 @@ func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption)
 	allocCtx, cancel := chromedp.NewExecAllocator(ctx, allocOpts...)
 	defer cancel()
 
+	return screenshotStart(allocCtx, urls, options...)
+}
+
+func screenshotStart(allocCtx context.Context, urls []string, options ...ScreenshotOption) ([]Screenshots, error) {
 	var browserOpts []chromedp.ContextOption
 	if debug := os.Getenv("CHROMEDP_DEBUG"); debug != "" && debug != "false" {
 		browserOpts = append(browserOpts, chromedp.WithDebugf(log.Printf))

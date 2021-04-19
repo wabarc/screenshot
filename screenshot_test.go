@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"os/exec"
 	"reflect"
 	"strings"
 	"testing"
@@ -70,6 +71,73 @@ func TestScreenshot(t *testing.T) {
 			t.Fail()
 		}
 	}
+}
+
+func TestScreenshotWithRemote(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	ts := newServer()
+	defer ts.Close()
+
+	cmd := exec.Command("chromium-browser", "--headless", "--disable-gpu", "--no-sandbox", "--remote-debugging-port=9222")
+	if err := cmd.Start(); err != nil {
+		t.Fatalf("Start Chromium headless failed: %v", err)
+	}
+	done := make(chan error, 1)
+	go func() {
+		done <- cmd.Wait()
+		select {
+		case <-time.After(60 * time.Second):
+			if err := cmd.Process.Kill(); err != nil {
+				t.Errorf("Failed to kill process: %v", err)
+			}
+			t.Log("Process killed as timeout reached")
+		case err := <-done:
+			if err != nil {
+				t.Errorf("Process finished with error: %v", err)
+			}
+			if err := cmd.Process.Kill(); err != nil {
+				t.Errorf("Failed to kill process: %v", err)
+			}
+			t.Log("Process finished successfully")
+		}
+	}()
+	time.Sleep(3 * time.Second)
+
+	urls := []string{ts.URL}
+	remote, err := NewChromeRemoteScreenshoter("127.0.0.1:9222")
+	if err != nil {
+		t.Fatal(err)
+	}
+	shots, err := remote.Screenshot(ctx, urls, ScaleFactor(1))
+	if err != nil {
+		t.Log(urls)
+		if err == context.DeadlineExceeded {
+			t.Error(err.Error(), http.StatusRequestTimeout)
+			done <- err
+			return
+		}
+		t.Error(err.Error(), http.StatusServiceUnavailable)
+		done <- err
+		return
+	}
+
+	for _, shot := range shots {
+		if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
+			t.Fail()
+		}
+
+		if shot.Title != "Example Domain" {
+			t.Log(shot.Title)
+			t.Fail()
+		}
+
+		if shot.Data == nil {
+			t.Fail()
+		}
+	}
+	done <- nil
 }
 
 func TestScreenshotFormat(t *testing.T) {

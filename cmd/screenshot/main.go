@@ -16,9 +16,11 @@ import (
 func main() {
 	var timeout uint64
 	var format string
+	var remoteAddr string
 
-	flag.Uint64Var(&timeout, "timeout", 60, "Screenshot timeout")
-	flag.StringVar(&format, "format", "png", "Screenshot file format, default: png")
+	flag.Uint64Var(&timeout, "timeout", 60, "Screenshot timeout.")
+	flag.StringVar(&format, "format", "png", "Screenshot file format.")
+	flag.StringVar(&remoteAddr, "remote-addr", "", "Headless browser remote address, such as 127.0.0.1:9222")
 
 	flag.Parse()
 
@@ -41,7 +43,18 @@ func main() {
 
 	urls := helper.MatchURL(str)
 
-	shots, err := screenshot.Screenshot(ctx, urls, screenshot.ScaleFactor(1), screenshot.Format(format))
+	var err error
+	var shots []screenshot.Screenshots
+	if remoteAddr != "" {
+		remote, err := screenshot.NewChromeRemoteScreenshoter(remoteAddr)
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
+		shots, err = remote.Screenshot(ctx, urls, screenshot.ScaleFactor(1))
+	} else {
+		shots, err = screenshot.Screenshot(ctx, urls, screenshot.ScaleFactor(1), screenshot.Format(format))
+	}
 	if err != nil {
 		if err == context.DeadlineExceeded {
 			fmt.Println(err.Error())
