@@ -109,6 +109,7 @@ func screenshotStart(allocCtx context.Context, urls []string, options ...Screens
 	screenshots := make([]Screenshots, 0, len(urls))
 	for _, url := range urls {
 		wg.Add(1)
+		url := convertURI(url)
 		go func(url string) {
 			var buf []byte
 			var title string

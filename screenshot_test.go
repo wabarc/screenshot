@@ -173,3 +173,15 @@ func TestScreenshotFormat(t *testing.T) {
 		t.Fatalf("content type should be image/jpeg, got: %s", contentType)
 	}
 }
+
+func TestConvertURI(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/pdf")
+		io.WriteString(w, "Fake Content")
+	}))
+
+	uri := convertURI(server.URL)
+	if !strings.Contains(uri, "docs.google.com") {
+		t.Errorf("unexpected convert document content viewer url got %s instead of %s", uri, "docs.google.com")
+	}
+}
