@@ -144,7 +144,7 @@ func screenshotStart(allocCtx context.Context, urls []string, options ...Screens
 				buf = nil
 			}
 			screenshots = append(screenshots, Screenshots{
-				URL:   url,
+				URL:   revertURI(url),
 				Data:  buf,
 				Title: title,
 			})

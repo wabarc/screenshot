@@ -8,7 +8,12 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"strings"
 )
+
+func viewerEndpoint() string {
+	return "https://docs.google.com/viewer?url="
+}
 
 func convertURI(link string) string {
 	uri, err := url.Parse(link)
@@ -25,7 +30,6 @@ func convertURI(link string) string {
 	// see: https://gist.github.com/tzmartin/1cf85dc3d975f94cfddc04bc0dd399be
 	// Common MIME types
 	// https://developer.mozilla.org/en-US/docs/Web/HTTP/Basics_of_HTTP/MIME_types/Common_types
-	viewer := "https://docs.google.com/viewer?url="
 	contentType := resp.Header.Get("Content-Type")
 	t, _, _ := mime.ParseMediaType(contentType)
 	switch t {
@@ -33,8 +37,12 @@ func convertURI(link string) string {
 		"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 		"application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 		"application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-		return viewer + uri.String()
+		return viewerEndpoint() + uri.String()
 	}
 
 	return link
+}
+
+func revertURI(link string) string {
+	return strings.Replace(link, viewerEndpoint(), "", 1)
 }
