@@ -94,7 +94,7 @@ fmt:
 
 run:
 	@echo "-> Running docker container"
-	$(DOCKER) run -ti --rm -v ${PWD}/../:${HOMEDIR} ${IMAGE} sh -c "\
+	$(DOCKER) run --memory="500m" -ti --rm -v ${PWD}/../:${HOMEDIR} ${IMAGE} sh -c "\
 		cd ${HOMEDIR}/${PROJECT} && \
 		go get -v && \
 		sh"

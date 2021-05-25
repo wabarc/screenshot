@@ -72,7 +72,7 @@ func (s *chromeRemoteScreenshoter) Screenshot(ctx context.Context, urls []string
 
 func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption) ([]Screenshots, error) {
 	// https://github.com/chromedp/chromedp/blob/b56cd66f9cebd6a1fa1283847bbf507409d48225/allocate.go#L53
-	var allocOpts = chromedp.DefaultExecAllocatorOptions[:]
+	var allocOpts = append(chromedp.DefaultExecAllocatorOptions[:], chromedp.Flag("ignore-certificate-errors", true))
 	if noSandbox := os.Getenv("CHROMEDP_NO_SANDBOX"); noSandbox != "" && noSandbox != "false" {
 		allocOpts = append(allocOpts, chromedp.NoSandbox)
 	}
@@ -117,7 +117,8 @@ func screenshotStart(allocCtx context.Context, urls []string, options ...Screens
 			tabCtx, _ := chromedp.NewContext(windowCtx)
 
 			chromedp.ListenTarget(tabCtx, func(ev interface{}) {
-				if _, ok := ev.(*page.EventJavascriptDialogOpening); ok {
+				switch ev.(type) {
+				case *page.EventJavascriptDialogOpening:
 					go func() {
 						if err := chromedp.Run(tabCtx,
 							page.HandleJavaScriptDialog(false),
@@ -125,6 +126,8 @@ func screenshotStart(allocCtx context.Context, urls []string, options ...Screens
 							log.Print(err)
 						}
 					}()
+				case *page.EventDocumentOpened:
+					return
 				}
 			})
 
@@ -173,9 +176,15 @@ func screenshotAction(url string, res *[]byte, options ScreenshotOptions) chrome
 			}
 
 			// get layout metrics
-			_, _, contentSize, err := page.GetLayoutMetrics().Do(ctx)
+			_, _, contentSize, _, _, cssContentSize, err := page.GetLayoutMetrics().Do(ctx)
 			if err != nil {
 				return err
+			}
+			if cssContentSize != nil {
+				contentSize = cssContentSize
+			}
+			if contentSize == nil {
+				return nil
 			}
 
 			width, height := int64(math.Ceil(contentSize.Width)), int64(math.Ceil(contentSize.Height))

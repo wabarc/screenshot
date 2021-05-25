@@ -3,8 +3,8 @@ module github.com/wabarc/screenshot
 go 1.16
 
 require (
-	github.com/chromedp/cdproto v0.0.0-20210323015217-0942afbea50e
-	github.com/chromedp/chromedp v0.6.10
-	github.com/wabarc/helper v0.0.0-20210420080053-35532f1f6a79
-	golang.org/x/sys v0.0.0-20210415045647-66c3f260301c // indirect
+	github.com/chromedp/cdproto v0.0.0-20210526005521-9e51b9051fd0
+	github.com/chromedp/chromedp v0.7.2
+	github.com/wabarc/helper v0.0.0-20210511232523-5ac25c99226f
+	golang.org/x/sys v0.0.0-20210525143221-35b2ab0089ea // indirect
 )
