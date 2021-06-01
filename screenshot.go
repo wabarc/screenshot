@@ -13,9 +13,10 @@ import (
 	"time"
 
 	"github.com/chromedp/cdproto/emulation"
+	"github.com/chromedp/cdproto/input"
 	"github.com/chromedp/cdproto/page"
-	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
+	"github.com/chromedp/chromedp/kb"
 )
 
 type Screenshots struct {
@@ -163,18 +164,8 @@ func screenshotAction(url string, res *[]byte, options ScreenshotOptions) chrome
 		// chromedp.Navigate(url),
 		navigateAndWaitFor(url, "networkIdle"),
 		chromedp.WaitReady("body"),
+		input.DispatchKeyEvent(input.KeyDown).WithKey(kb.End),
 		chromedp.ActionFunc(func(ctx context.Context) (err error) {
-			if res == nil {
-				return nil
-			}
-			_, exp, err := runtime.Evaluate(`window.scrollTo(0,document.body.scrollHeight);`).Do(ctx)
-			if err != nil {
-				return err
-			}
-			if exp != nil {
-				return exp
-			}
-
 			// get layout metrics
 			_, _, contentSize, _, _, cssContentSize, err := page.GetLayoutMetrics().Do(ctx)
 			if err != nil {
