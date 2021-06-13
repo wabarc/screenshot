@@ -69,7 +69,7 @@ func TestScreenshot(t *testing.T) {
 			t.Fail()
 		}
 
-		if shot.Data == nil {
+		if shot.Image == nil {
 			t.Fail()
 		}
 	}
@@ -127,7 +127,7 @@ func TestScreenshotWithRemote(t *testing.T) {
 			t.Fail()
 		}
 
-		if shot.Data == nil {
+		if shot.Image == nil {
 			t.Fail()
 		}
 	}
@@ -149,10 +149,10 @@ func TestScreenshotFormat(t *testing.T) {
 	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
 		t.Fail()
 	}
-	if shot.Title != "Example Domain" || shot.Data == nil {
-		t.Fatalf("screenshots empty, title: %s, data: %v", shot.Title, shot.Data)
+	if shot.Title != "Example Domain" || shot.Image == nil {
+		t.Fatalf("screenshots empty, title: %s, data: %v", shot.Title, shot.Image)
 	}
-	contentType := http.DetectContentType(shot.Data)
+	contentType := http.DetectContentType(shot.Image)
 	if contentType != "image/png" {
 		t.Fatalf("content type should be image/png, got: %s", contentType)
 	}
@@ -165,12 +165,88 @@ func TestScreenshotFormat(t *testing.T) {
 	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
 		t.Fail()
 	}
-	if shot.Title != "Example Domain" || shot.Data == nil {
-		t.Fatalf("screenshots empty, title: %s, data: %v", shot.Title, shot.Data)
+	if shot.Title != "Example Domain" || shot.Image == nil {
+		t.Fatalf("screenshots empty, title: %s, data: %v", shot.Title, shot.Image)
 	}
-	contentType = http.DetectContentType(shot.Data)
+	contentType = http.DetectContentType(shot.Image)
 	if contentType != "image/jpeg" {
 		t.Fatalf("content type should be image/jpeg, got: %s", contentType)
+	}
+}
+
+func TestScreenshotAsPDF(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	ts := newServer()
+	defer ts.Close()
+
+	urls := []string{ts.URL}
+	shots, err := Screenshot(ctx, urls, ScaleFactor(1), PrintPDF(true))
+	if err != nil {
+		t.Log(urls)
+		if err == context.DeadlineExceeded {
+			t.Error(err.Error(), http.StatusRequestTimeout)
+			return
+		}
+		t.Error(err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+
+	for _, shot := range shots {
+		if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
+			t.Fail()
+		}
+
+		if shot.Title != "Example Domain" {
+			t.Log(shot.Title)
+			t.Fail()
+		}
+
+		if shot.Image == nil {
+			t.Fail()
+		}
+		if shot.PDF == nil {
+			t.Error("unexpected screenshot as pdf")
+		}
+	}
+}
+
+func TestScreenshotAsHTML(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	ts := newServer()
+	defer ts.Close()
+
+	urls := []string{ts.URL}
+	shots, err := Screenshot(ctx, urls, ScaleFactor(1), RawHTML(true))
+	if err != nil {
+		t.Log(urls)
+		if err == context.DeadlineExceeded {
+			t.Error(err.Error(), http.StatusRequestTimeout)
+			return
+		}
+		t.Error(err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+
+	for _, shot := range shots {
+		if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
+			t.Fail()
+		}
+
+		if shot.Title != "Example Domain" {
+			t.Log(shot.Title)
+			t.Fail()
+		}
+
+		if shot.Image == nil {
+			t.Fail()
+		}
+		if shot.HTML == nil {
+			t.Error("unexpected screenshot as raw html")
+		}
 	}
 }
 

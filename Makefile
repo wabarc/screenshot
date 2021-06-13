@@ -1,4 +1,5 @@
 export GO111MODULE = on
+export CGO_ENABLED = 0
 export GOPROXY = https://proxy.golang.org
 
 ORGNAME := wabarc
@@ -110,6 +111,6 @@ vet:
 	@go vet ./...
 
 clean:
-	@echo "-> Cleaning"
-	rm -rf *.png *.jpg *.jpe
-	rm -rf build/binary/* build/package/*
+	@echo "-> Cleaning..."
+	@rm -rf *.png *.jpg *.jpe *.pdf *.htm*
+	@rm -rf build/binary/* build/package/*

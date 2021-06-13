@@ -13,16 +13,25 @@ import (
 	"time"
 
 	"github.com/chromedp/cdproto/emulation"
-	"github.com/chromedp/cdproto/input"
+	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
-	"github.com/chromedp/chromedp/kb"
+	"github.com/wabarc/logger"
 )
+
+func init() {
+	debug := os.Getenv("DEBUG")
+	if debug == "true" || debug == "1" || debug == "on" {
+		logger.EnableDebug()
+	}
+}
 
 type Screenshots struct {
 	URL   string
 	Title string
-	Data  []byte
+	Image []byte
+	HTML  []byte
+	PDF   []byte
 }
 
 // Screenshoter is a webpage screenshot interface.
@@ -65,33 +74,44 @@ func (s *chromeRemoteScreenshoter) Screenshot(ctx context.Context, urls []string
 		return nil, fmt.Errorf("Can't connect to headless browser")
 	}
 
-	allocCtx, cancel := chromedp.NewRemoteAllocator(ctx, s.url)
+	ctx, cancel := chromedp.NewRemoteAllocator(ctx, s.url)
+	ctx, cancel = context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
-	return screenshotStart(allocCtx, urls, options...)
+	return screenshotStart(ctx, urls, options...)
 }
 
 func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption) ([]Screenshots, error) {
 	// https://github.com/chromedp/chromedp/blob/b56cd66f9cebd6a1fa1283847bbf507409d48225/allocate.go#L53
-	var allocOpts = append(chromedp.DefaultExecAllocatorOptions[:], chromedp.Flag("ignore-certificate-errors", true))
+	var allocOpts = append(
+		chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.Flag("ignore-certificate-errors", true),
+		chromedp.Flag("allow-running-insecure-content", true),
+		chromedp.Flag("disable-web-security", true),
+		chromedp.Flag("disable-webgl", true),
+	)
+	if noHeadless := os.Getenv("CHROMEDP_NO_HEADLESS"); noHeadless != "" && noHeadless != "false" {
+		allocOpts = append(allocOpts, chromedp.Flag("headless", false))
+	}
 	if noSandbox := os.Getenv("CHROMEDP_NO_SANDBOX"); noSandbox != "" && noSandbox != "false" {
 		allocOpts = append(allocOpts, chromedp.NoSandbox)
 	}
 	if disableGPU := os.Getenv("CHROMEDP_DISABLE_GPU"); disableGPU != "" && disableGPU != "false" {
 		allocOpts = append(allocOpts, chromedp.DisableGPU)
 	}
-	allocCtx, cancel := chromedp.NewExecAllocator(ctx, allocOpts...)
+	ctx, cancel := chromedp.NewExecAllocator(ctx, allocOpts...)
+	ctx, cancel = context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
-	return screenshotStart(allocCtx, urls, options...)
+	return screenshotStart(ctx, urls, options...)
 }
 
-func screenshotStart(allocCtx context.Context, urls []string, options ...ScreenshotOption) ([]Screenshots, error) {
+func screenshotStart(ctx context.Context, urls []string, options ...ScreenshotOption) ([]Screenshots, error) {
 	var browserOpts []chromedp.ContextOption
 	if debug := os.Getenv("CHROMEDP_DEBUG"); debug != "" && debug != "false" {
 		browserOpts = append(browserOpts, chromedp.WithDebugf(log.Printf))
 	}
-	windowCtx, cancel := chromedp.NewContext(allocCtx, browserOpts...)
+	ctx, cancel := chromedp.NewContext(ctx, browserOpts...)
 	defer cancel()
 
 	var opts ScreenshotOptions
@@ -100,7 +120,7 @@ func screenshotStart(allocCtx context.Context, urls []string, options ...Screens
 	}
 
 	// run a no-op action to allocate the browser
-	// if err := chromedp.Run(windowCtx, chromedp.ActionFunc(func(_ context.Context) error {
+	// if err := chromedp.Run(ctx, chromedp.ActionFunc(func(_ context.Context) error {
 	// 	return nil
 	// })); err != nil {
 	// 	return nil, err
@@ -113,40 +133,61 @@ func screenshotStart(allocCtx context.Context, urls []string, options ...Screens
 		url := convertURI(url)
 		go func(url string) {
 			var buf []byte
+			var pdf []byte
+			var raw string
 			var title string
-			captureAction := screenshotAction(url, &buf, opts)
-			tabCtx, _ := chromedp.NewContext(windowCtx)
+			// var ok bool
 
-			chromedp.ListenTarget(tabCtx, func(ev interface{}) {
-				switch ev.(type) {
+			chromedp.ListenTarget(ctx, func(ev interface{}) {
+				switch ev := ev.(type) {
 				case *page.EventJavascriptDialogOpening:
 					go func() {
-						if err := chromedp.Run(tabCtx,
-							page.HandleJavaScriptDialog(false),
+						if err := chromedp.Run(ctx,
+							page.HandleJavaScriptDialog(true),
 						); err != nil {
 							log.Print(err)
 						}
 					}()
-				case *page.EventDocumentOpened:
+				// case *page.EventDocumentOpened:
+				// 	return
+				// case *network.EventRequestWillBeSent:
+				// 	return
+				// case *network.EventResponseReceived:
+				// 	return
+				case *network.EventLoadingFinished:
+					logger.Debug("[screenshot] EventLoadingFinished: %v", ev.RequestID)
 					return
 				}
 			})
 
-			if err := chromedp.Run(tabCtx, chromedp.Tasks{
-				// emulation.SetDeviceMetricsOverride(opts.Width, opts.Height, opts.ScaleFactor, opts.Mobile),
-				chromedp.Navigate(url),
-				chromedp.Sleep(2 * time.Second),
-				chromedp.Title(&title),
+			captureAction := screenshotAction(url, &buf, opts)
+			exportHTML := exportHTML(&raw, opts)
+			saveAsPDF := printPDF(&pdf, opts)
+			if err := chromedp.Run(ctx, chromedp.Tasks{
+				page.Enable(),
+				network.Enable(),
+				// enableLifeCycleEvents(),
+				page.SetDownloadBehavior(page.SetDownloadBehaviorBehaviorDeny),
+				navigateAndWaitFor(url, "networkIdle"),
+				// chromedp.Navigate(url),
 				chromedp.WaitReady("body"),
+				chromedp.Sleep(5 * time.Second),
+				chromedp.Title(&title),
+				evaluate(&buf),
 				captureAction,
-				// closePageAction(),
+				exportHTML,
+				saveAsPDF,
+				chromedp.ResetViewport(),
+				closePageAction(),
 			}); err != nil {
 				log.Print(err)
 				buf = nil
 			}
 			screenshots = append(screenshots, Screenshots{
 				URL:   revertURI(url),
-				Data:  buf,
+				PDF:   pdf,
+				HTML:  []byte(raw),
+				Image: buf,
 				Title: title,
 			})
 			wg.Done()
@@ -157,14 +198,28 @@ func screenshotStart(allocCtx context.Context, urls []string, options ...Screens
 	return screenshots, nil
 }
 
+func evaluate(res interface{}) chromedp.EvaluateAction {
+	// Scroll down to the bottom line by line
+	return chromedp.Tasks{
+		chromedp.EvaluateAsDevTools(`
+			var totalHeight = 0;
+			var distance = 100;
+			var timer = setInterval(() => {
+				var scrollHeight = document.body.scrollHeight;
+				window.scrollBy(0, distance);
+				totalHeight += distance;
+				if (totalHeight >= scrollHeight) {
+					clearInterval(timer);
+				}
+			}, 100)
+		`, res),
+		chromedp.Sleep(15 * time.Second),
+	}
+}
+
 // Note: this will override the viewport emulation settings.
 func screenshotAction(url string, res *[]byte, options ScreenshotOptions) chromedp.Action {
 	return chromedp.Tasks{
-		enableLifeCycleEvents(),
-		// chromedp.Navigate(url),
-		navigateAndWaitFor(url, "networkIdle"),
-		chromedp.WaitReady("body"),
-		input.DispatchKeyEvent(input.KeyDown).WithKey(kb.End),
 		chromedp.ActionFunc(func(ctx context.Context) (err error) {
 			// get layout metrics
 			_, _, contentSize, _, _, cssContentSize, err := page.GetLayoutMetrics().Do(ctx)
@@ -213,12 +268,38 @@ func screenshotAction(url string, res *[]byte, options ScreenshotOptions) chrome
 	}
 }
 
+func printPDF(res *[]byte, options ScreenshotOptions) chromedp.Action {
+	if !options.PrintPDF {
+		return chromedp.Tasks{}
+	}
+
+	return chromedp.Tasks{
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			var err error
+			*res, _, err = page.PrintToPDF().WithLandscape(true).WithPrintBackground(true).Do(ctx)
+			return err
+		}),
+	}
+}
+
+func exportHTML(res *string, options ScreenshotOptions) chromedp.Action {
+	if !options.RawHTML {
+		return chromedp.Tasks{}
+	}
+
+	return chromedp.Tasks{
+		chromedp.OuterHTML("html", res, chromedp.ByQuery),
+	}
+}
+
 func closePageAction() chromedp.Action {
 	return chromedp.ActionFunc(func(ctx context.Context) (err error) {
 		return page.Close().Do(ctx)
 	})
 }
 
+// page.SetLifecycleEventsEnabled is called by chromedp from v0.5.4
+// https://github.com/chromedp/chromedp/issues/431#issuecomment-840433914
 func enableLifeCycleEvents() chromedp.ActionFunc {
 	return func(ctx context.Context) error {
 		err := page.Enable().Do(ctx)
@@ -287,6 +368,9 @@ type ScreenshotOptions struct {
 	MaxHeight int64
 
 	ScaleFactor float64
+
+	PrintPDF bool
+	RawHTML  bool
 }
 
 type ScreenshotOption func(*ScreenshotOptions)
@@ -342,5 +426,17 @@ func Format(format string) ScreenshotOption {
 		case "jpg", "jpeg":
 			opts.Format = page.CaptureScreenshotFormatJpeg
 		}
+	}
+}
+
+func PrintPDF(b bool) ScreenshotOption {
+	return func(opts *ScreenshotOptions) {
+		opts.PrintPDF = b
+	}
+}
+
+func RawHTML(b bool) ScreenshotOption {
+	return func(opts *ScreenshotOptions) {
+		opts.RawHTML = b
 	}
 }
