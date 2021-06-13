@@ -1,5 +1,9 @@
 # screenshot
 
+[![Go Report Card](https://goreportcard.com/badge/github.com/wabarc/screenshot)](https://goreportcard.com/report/github.com/wabarc/screenshot)
+[![Go Reference](https://img.shields.io/badge/godoc-reference-blue.svg)](https://pkg.go.dev/github.com/wabarc/screenshot)
+[![Releases](https://img.shields.io/github/v/release/wabarc/screenshot.svg?include_prereleases&color=blue)](https://github.com/wabarc/screenshot/releases)
+
 Screenshot is a project that capture and save webpage as image using [chromedp](https://github.com/chromedp/chromedp).
 
 This repository is a *work in progress*.
