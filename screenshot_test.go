@@ -17,7 +17,7 @@ import (
 func writeHTML(content string) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html")
-		io.WriteString(w, strings.TrimSpace(content))
+		io.WriteString(w, strings.TrimSpace(content)) // nolint:errcheck
 	})
 }
 
@@ -92,7 +92,7 @@ func TestScreenshotWithRemote(t *testing.T) {
 		t.Fatalf("Start Chromium headless failed: %v", err)
 	}
 	go func() {
-		cmd.Wait()
+		cmd.Wait() // nolint:errcheck
 	}()
 	time.Sleep(3 * time.Second)
 	defer func() {
@@ -141,7 +141,7 @@ func TestScreenshotFormat(t *testing.T) {
 	defer ts.Close()
 
 	urls := []string{ts.URL}
-	shots, err := Screenshot(ctx, urls, Format("png"))
+	shots, err := Screenshot(ctx, urls, Quality(100))
 	if err != nil {
 		t.Fatal(err.Error(), http.StatusServiceUnavailable)
 	}
@@ -253,7 +253,7 @@ func TestScreenshotAsHTML(t *testing.T) {
 func TestConvertURI(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/pdf")
-		io.WriteString(w, "Fake Content")
+		io.WriteString(w, "Fake Content") // nolint:errcheck
 	}))
 
 	uri := convertURI(server.URL)

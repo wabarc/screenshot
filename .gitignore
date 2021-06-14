@@ -2,6 +2,7 @@
 /build/package/*
 .*.swap
 **.jpg
+**.jpe*
 **.png
 **.pdf
 **.htm*

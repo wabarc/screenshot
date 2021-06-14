@@ -5,14 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
-	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
@@ -74,8 +72,8 @@ func (s *chromeRemoteScreenshoter) Screenshot(ctx context.Context, urls []string
 		return nil, fmt.Errorf("Can't connect to headless browser")
 	}
 
-	ctx, cancel := chromedp.NewRemoteAllocator(ctx, s.url)
-	ctx, cancel = context.WithTimeout(ctx, 10*time.Minute)
+	ctx, _ = chromedp.NewRemoteAllocator(ctx, s.url)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
 	return screenshotStart(ctx, urls, options...)
@@ -85,6 +83,8 @@ func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption)
 	// https://github.com/chromedp/chromedp/blob/b56cd66f9cebd6a1fa1283847bbf507409d48225/allocate.go#L53
 	var allocOpts = append(
 		chromedp.DefaultExecAllocatorOptions[:],
+		chromedp.CombinedOutput(log.Writer()),
+		chromedp.NoDefaultBrowserCheck,
 		chromedp.Flag("ignore-certificate-errors", true),
 		chromedp.Flag("allow-running-insecure-content", true),
 		chromedp.Flag("disable-web-security", true),
@@ -99,8 +99,8 @@ func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption)
 	if disableGPU := os.Getenv("CHROMEDP_DISABLE_GPU"); disableGPU != "" && disableGPU != "false" {
 		allocOpts = append(allocOpts, chromedp.DisableGPU)
 	}
-	ctx, cancel := chromedp.NewExecAllocator(ctx, allocOpts...)
-	ctx, cancel = context.WithTimeout(ctx, 10*time.Minute)
+	ctx, _ = chromedp.NewExecAllocator(ctx, allocOpts...)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
 	defer cancel()
 
 	return screenshotStart(ctx, urls, options...)
@@ -117,6 +117,9 @@ func screenshotStart(ctx context.Context, urls []string, options ...ScreenshotOp
 	var opts ScreenshotOptions
 	for _, o := range options {
 		o(&opts)
+	}
+	if opts.Quality != 100 {
+		opts.Format = page.CaptureScreenshotFormatJpeg
 	}
 
 	// run a no-op action to allocate the browser
@@ -160,6 +163,7 @@ func screenshotStart(ctx context.Context, urls []string, options ...ScreenshotOp
 				}
 			})
 
+			ctx, _ = chromedp.NewContext(ctx)
 			captureAction := screenshotAction(url, &buf, opts)
 			exportHTML := exportHTML(&raw, opts)
 			saveAsPDF := printPDF(&pdf, opts)
@@ -171,13 +175,13 @@ func screenshotStart(ctx context.Context, urls []string, options ...ScreenshotOp
 				navigateAndWaitFor(url, "networkIdle"),
 				// chromedp.Navigate(url),
 				chromedp.WaitReady("body"),
-				chromedp.Sleep(5 * time.Second),
 				chromedp.Title(&title),
 				evaluate(&buf),
 				captureAction,
 				exportHTML,
 				saveAsPDF,
 				chromedp.ResetViewport(),
+				chromedp.Sleep(time.Second),
 				closePageAction(),
 			}); err != nil {
 				log.Print(err)
@@ -233,24 +237,13 @@ func screenshotAction(url string, res *[]byte, options ScreenshotOptions) chrome
 				return nil
 			}
 
-			width, height := int64(math.Ceil(contentSize.Width)), int64(math.Ceil(contentSize.Height))
-
-			// force viewport emulation
-			err = emulation.SetDeviceMetricsOverride(width, height, 1, false).
-				WithScreenOrientation(&emulation.ScreenOrientation{
-					Type:  emulation.OrientationTypePortraitPrimary,
-					Angle: 0,
-				}).Do(ctx)
-			if err != nil {
-				return err
-			}
-
 			// Limit dimensions
 			if options.MaxHeight > 0 && contentSize.Height > float64(options.MaxHeight) {
 				contentSize.Height = float64(options.MaxHeight)
 			}
 
 			*res, err = page.CaptureScreenshot().
+				WithCaptureBeyondViewport(true).
 				WithQuality(options.Quality).
 				WithFormat(options.Format).
 				WithClip(&page.Viewport{
@@ -300,6 +293,7 @@ func closePageAction() chromedp.Action {
 
 // page.SetLifecycleEventsEnabled is called by chromedp from v0.5.4
 // https://github.com/chromedp/chromedp/issues/431#issuecomment-840433914
+// nolint:deadcode,unused
 func enableLifeCycleEvents() chromedp.ActionFunc {
 	return func(ctx context.Context) error {
 		err := page.Enable().Do(ctx)

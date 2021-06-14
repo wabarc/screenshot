@@ -54,15 +54,21 @@ func main() {
 
 	var err error
 	var shots []screenshot.Screenshots
+	var opts = []screenshot.ScreenshotOption{
+		screenshot.ScaleFactor(1),
+		screenshot.PrintPDF(pdf), // print pdf
+		screenshot.RawHTML(raw),  // export html
+		screenshot.Quality(100),  // image quality
+	}
 	if remoteAddr != "" {
-		remote, err := screenshot.NewChromeRemoteScreenshoter(remoteAddr)
-		if err != nil {
-			fmt.Println(err)
+		remote, er := screenshot.NewChromeRemoteScreenshoter(remoteAddr)
+		if er != nil {
+			fmt.Println(er)
 			return
 		}
-		shots, err = remote.Screenshot(ctx, urls, screenshot.ScaleFactor(1), screenshot.PrintPDF(pdf), screenshot.RawHTML(raw))
+		shots, err = remote.Screenshot(ctx, urls, opts...)
 	} else {
-		shots, err = screenshot.Screenshot(ctx, urls, screenshot.ScaleFactor(1), screenshot.Format(format), screenshot.PrintPDF(pdf), screenshot.RawHTML(raw))
+		shots, err = screenshot.Screenshot(ctx, urls, opts...)
 	}
 	if err != nil {
 		if err == context.DeadlineExceeded {

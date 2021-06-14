@@ -112,5 +112,5 @@ vet:
 
 clean:
 	@echo "-> Cleaning..."
-	@rm -rf *.png *.jpg *.jpe *.pdf *.htm*
+	@rm -rf *.png *.jpg *.jpe* *.pdf *.htm*
 	@rm -rf build/binary/* build/package/*
