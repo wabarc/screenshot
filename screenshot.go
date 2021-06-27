@@ -5,12 +5,14 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"math"
 	"net/http"
 	"os"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
@@ -72,8 +74,7 @@ func (s *chromeRemoteScreenshoter) Screenshot(ctx context.Context, urls []string
 		return nil, fmt.Errorf("Can't connect to headless browser")
 	}
 
-	ctx, _ = chromedp.NewRemoteAllocator(ctx, s.url)
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	ctx, cancel := chromedp.NewRemoteAllocator(ctx, s.url)
 	defer cancel()
 
 	return screenshotStart(ctx, urls, options...)
@@ -99,8 +100,7 @@ func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption)
 	if disableGPU := os.Getenv("CHROMEDP_DISABLE_GPU"); disableGPU != "" && disableGPU != "false" {
 		allocOpts = append(allocOpts, chromedp.DisableGPU)
 	}
-	ctx, _ = chromedp.NewExecAllocator(ctx, allocOpts...)
-	ctx, cancel := context.WithTimeout(ctx, 10*time.Minute)
+	ctx, cancel := chromedp.NewExecAllocator(ctx, allocOpts...)
 	defer cancel()
 
 	return screenshotStart(ctx, urls, options...)
@@ -164,7 +164,7 @@ func screenshotStart(ctx context.Context, urls []string, options ...ScreenshotOp
 			})
 
 			ctx, _ = chromedp.NewContext(ctx)
-			captureAction := screenshotAction(url, &buf, opts)
+			captureAction := screenshotAction(&buf, opts)
 			exportHTML := exportHTML(&raw, opts)
 			saveAsPDF := printPDF(&pdf, opts)
 			if err := chromedp.Run(ctx, chromedp.Tasks{
@@ -176,7 +176,7 @@ func screenshotStart(ctx context.Context, urls []string, options ...ScreenshotOp
 				// chromedp.Navigate(url),
 				chromedp.WaitReady("body"),
 				chromedp.Title(&title),
-				evaluate(&buf),
+				evaluate(nil),
 				captureAction,
 				exportHTML,
 				saveAsPDF,
@@ -222,7 +222,7 @@ func evaluate(res interface{}) chromedp.EvaluateAction {
 }
 
 // Note: this will override the viewport emulation settings.
-func screenshotAction(url string, res *[]byte, options ScreenshotOptions) chromedp.Action {
+func screenshotAction(res *[]byte, options ScreenshotOptions) chromedp.Action {
 	return chromedp.Tasks{
 		chromedp.ActionFunc(func(ctx context.Context) (err error) {
 			// get layout metrics
@@ -233,9 +233,23 @@ func screenshotAction(url string, res *[]byte, options ScreenshotOptions) chrome
 			if cssContentSize != nil {
 				contentSize = cssContentSize
 			}
-			if contentSize == nil {
-				return nil
+
+			width, height := int64(math.Ceil(contentSize.Width)), int64(math.Ceil(contentSize.Height))
+
+			// force viewport emulation
+			err = emulation.SetDeviceMetricsOverride(width, height, 1, false).
+				WithScreenOrientation(&emulation.ScreenOrientation{
+					Type:  emulation.OrientationTypePortraitPrimary,
+					Angle: 0,
+				}).Do(ctx)
+			if err != nil {
+				return err
 			}
+			var clip page.Viewport
+			x, y := contentSize.X, contentSize.Y
+			clip.Width, clip.Height = contentSize.Width, contentSize.Height
+			clip.X, clip.Y = x, y
+			clip.Scale = 1
 
 			// Limit dimensions
 			if options.MaxHeight > 0 && contentSize.Height > float64(options.MaxHeight) {
@@ -246,13 +260,8 @@ func screenshotAction(url string, res *[]byte, options ScreenshotOptions) chrome
 				WithCaptureBeyondViewport(true).
 				WithQuality(options.Quality).
 				WithFormat(options.Format).
-				WithClip(&page.Viewport{
-					X:      contentSize.X,
-					Y:      contentSize.Y,
-					Width:  contentSize.Width,
-					Height: contentSize.Height,
-					Scale:  1,
-				}).Do(ctx)
+				WithClip(&clip).
+				Do(ctx)
 			if err != nil {
 				return err
 			}
