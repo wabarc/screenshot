@@ -7,9 +7,9 @@ import (
 	"log"
 	"math"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/chromedp/cdproto/emulation"
@@ -36,7 +36,7 @@ type Screenshots struct {
 
 // Screenshoter is a webpage screenshot interface.
 type Screenshoter interface {
-	Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption) ([]Screenshots, error)
+	Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (Screenshots, error)
 }
 
 type chromeRemoteScreenshoter struct {
@@ -69,22 +69,22 @@ func NewChromeRemoteScreenshoter(addr string) (Screenshoter, error) {
 	}, nil
 }
 
-func (s *chromeRemoteScreenshoter) Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption) ([]Screenshots, error) {
+func (s *chromeRemoteScreenshoter) Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (shot Screenshots, err error) {
 	if s.url == "" {
-		return nil, fmt.Errorf("Can't connect to headless browser")
+		return shot, fmt.Errorf("Can't connect to headless browser")
 	}
 
 	ctx, cancel := chromedp.NewRemoteAllocator(ctx, s.url)
 	defer cancel()
 
-	return screenshotStart(ctx, urls, options...)
+	return screenshotStart(ctx, input, options...)
 }
 
-func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption) ([]Screenshots, error) {
+func Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (Screenshots, error) {
 	// https://github.com/chromedp/chromedp/blob/b56cd66f9cebd6a1fa1283847bbf507409d48225/allocate.go#L53
 	var allocOpts = append(
 		chromedp.DefaultExecAllocatorOptions[:],
-		chromedp.CombinedOutput(log.Writer()),
+		// chromedp.CombinedOutput(log.Writer()),
 		chromedp.NoDefaultBrowserCheck,
 		chromedp.Flag("ignore-certificate-errors", true),
 		chromedp.Flag("allow-running-insecure-content", true),
@@ -103,10 +103,10 @@ func Screenshot(ctx context.Context, urls []string, options ...ScreenshotOption)
 	ctx, cancel := chromedp.NewExecAllocator(ctx, allocOpts...)
 	defer cancel()
 
-	return screenshotStart(ctx, urls, options...)
+	return screenshotStart(ctx, input, options...)
 }
 
-func screenshotStart(ctx context.Context, urls []string, options ...ScreenshotOption) ([]Screenshots, error) {
+func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotOption) (shot Screenshots, err error) {
 	var browserOpts []chromedp.ContextOption
 	if debug := os.Getenv("CHROMEDP_DEBUG"); debug != "" && debug != "false" {
 		browserOpts = append(browserOpts, chromedp.WithDebugf(log.Printf))
@@ -129,77 +129,72 @@ func screenshotStart(ctx context.Context, urls []string, options ...ScreenshotOp
 	// 	return nil, err
 	// }
 
-	var wg sync.WaitGroup
-	screenshots := make([]Screenshots, 0, len(urls))
-	for _, url := range urls {
-		wg.Add(1)
-		url := convertURI(url)
-		go func(url string) {
-			var buf []byte
-			var pdf []byte
-			var raw string
-			var title string
-			// var ok bool
+	url := convertURI(input.String())
+	var buf []byte
+	var pdf []byte
+	var raw string
+	var title string
 
-			chromedp.ListenTarget(ctx, func(ev interface{}) {
-				switch ev := ev.(type) {
-				case *page.EventJavascriptDialogOpening:
-					go func() {
-						if err := chromedp.Run(ctx,
-							page.HandleJavaScriptDialog(true),
-						); err != nil {
-							log.Print(err)
-						}
-					}()
-				// case *page.EventDocumentOpened:
-				// 	return
-				// case *network.EventRequestWillBeSent:
-				// 	return
-				// case *network.EventResponseReceived:
-				// 	return
-				case *network.EventLoadingFinished:
-					logger.Debug("[screenshot] EventLoadingFinished: %v", ev.RequestID)
-					return
+	chromedp.ListenTarget(ctx, func(ev interface{}) {
+		switch ev := ev.(type) {
+		case *page.EventJavascriptDialogOpening:
+			go func() {
+				if err := chromedp.Run(ctx,
+					page.HandleJavaScriptDialog(true),
+				); err != nil {
+					log.Print(err)
 				}
-			})
+			}()
+		// case *page.EventDocumentOpened:
+		// 	return
+		// case *network.EventRequestWillBeSent:
+		// 	return
+		// case *network.EventResponseReceived:
+		// 	return
+		case *network.EventLoadingFinished:
+			logger.Debug("[screenshot] EventLoadingFinished: %v", ev.RequestID)
+			return
+		}
+	})
 
-			ctx, _ = chromedp.NewContext(ctx)
-			captureAction := screenshotAction(&buf, opts)
-			exportHTML := exportHTML(&raw, opts)
-			saveAsPDF := printPDF(&pdf, opts)
-			if err := chromedp.Run(ctx, chromedp.Tasks{
-				page.Enable(),
-				network.Enable(),
-				// enableLifeCycleEvents(),
-				page.SetDownloadBehavior(page.SetDownloadBehaviorBehaviorDeny),
-				navigateAndWaitFor(url, "networkIdle"),
-				// chromedp.Navigate(url),
-				chromedp.WaitReady("body"),
-				chromedp.Title(&title),
-				evaluate(nil),
-				captureAction,
-				exportHTML,
-				saveAsPDF,
-				chromedp.ResetViewport(),
-				chromedp.Sleep(time.Second),
-				closePageAction(),
-			}); err != nil {
-				log.Print(err)
-				buf = nil
-			}
-			screenshots = append(screenshots, Screenshots{
-				URL:   revertURI(url),
-				PDF:   pdf,
-				HTML:  []byte(raw),
-				Image: buf,
-				Title: title,
-			})
-			wg.Done()
-		}(url)
+	ctx, _ = chromedp.NewContext(ctx)
+	captureAction := screenshotAction(&buf, opts)
+	exportHTML := exportHTML(&raw, opts)
+	saveAsPDF := printPDF(&pdf, opts)
+	if err := chromedp.Run(ctx, chromedp.Tasks{
+		page.Enable(),
+		network.Enable(),
+		// enableLifeCycleEvents(),
+		page.SetDownloadBehavior(page.SetDownloadBehaviorBehaviorDeny),
+		navigateAndWaitFor(url, "networkIdle"),
+		// chromedp.Navigate(url),
+		chromedp.WaitReady("body"),
+		chromedp.Title(&title),
+		evaluate(nil),
+		captureAction,
+		exportHTML,
+		saveAsPDF,
+		chromedp.ResetViewport(),
+		chromedp.Sleep(time.Second),
+		closePageAction(),
+	}); err != nil {
+		log.Print(err)
+		buf = nil
 	}
-	wg.Wait()
 
-	return screenshots, nil
+	var html []byte
+	if raw != "" {
+		html = []byte(raw)
+	}
+	shot = Screenshots{
+		URL:   revertURI(url),
+		PDF:   pdf,
+		HTML:  html,
+		Image: buf,
+		Title: title,
+	}
+
+	return shot, nil
 }
 
 func evaluate(res interface{}) chromedp.EvaluateAction {

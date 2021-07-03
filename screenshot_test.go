@@ -5,6 +5,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"os/exec"
 	"reflect"
 	"strings"
@@ -47,10 +48,12 @@ func TestScreenshot(t *testing.T) {
 	ts := newServer()
 	defer ts.Close()
 
-	urls := []string{ts.URL}
-	shots, err := Screenshot(ctx, urls, ScaleFactor(1))
+	input, err := url.Parse(ts.URL)
 	if err != nil {
-		t.Log(urls)
+		t.Fatal(err)
+	}
+	shot, err := Screenshot(ctx, input, ScaleFactor(1))
+	if err != nil {
 		if err == context.DeadlineExceeded {
 			t.Error(err.Error(), http.StatusRequestTimeout)
 			return
@@ -59,19 +62,17 @@ func TestScreenshot(t *testing.T) {
 		return
 	}
 
-	for _, shot := range shots {
-		if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
-			t.Fail()
-		}
+	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
+		t.Fail()
+	}
 
-		if shot.Title != "Example Domain" {
-			t.Log(shot.Title)
-			t.Fail()
-		}
+	if shot.Title != "Example Domain" {
+		t.Log(shot.Title)
+		t.Fail()
+	}
 
-		if shot.Image == nil {
-			t.Fail()
-		}
+	if shot.Image == nil {
+		t.Fail()
 	}
 }
 
@@ -101,14 +102,16 @@ func TestScreenshotWithRemote(t *testing.T) {
 		}
 	}()
 
-	urls := []string{ts.URL}
+	input, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
 	remote, err := NewChromeRemoteScreenshoter("127.0.0.1:9222")
 	if err != nil {
 		t.Fatal(err)
 	}
-	shots, err := remote.Screenshot(ctx, urls, ScaleFactor(1))
+	shot, err := remote.Screenshot(ctx, input, ScaleFactor(1))
 	if err != nil {
-		t.Log(urls)
 		if err == context.DeadlineExceeded {
 			t.Error(err.Error(), http.StatusRequestTimeout)
 			return
@@ -117,19 +120,17 @@ func TestScreenshotWithRemote(t *testing.T) {
 		return
 	}
 
-	for _, shot := range shots {
-		if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
-			t.Fail()
-		}
+	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
+		t.Fail()
+	}
 
-		if shot.Title != "Example Domain" {
-			t.Log(shot.Title)
-			t.Fail()
-		}
+	if shot.Title != "Example Domain" {
+		t.Log(shot.Title)
+		t.Fail()
+	}
 
-		if shot.Image == nil {
-			t.Fail()
-		}
+	if shot.Image == nil {
+		t.Fail()
 	}
 }
 
@@ -140,12 +141,14 @@ func TestScreenshotFormat(t *testing.T) {
 	ts := newServer()
 	defer ts.Close()
 
-	urls := []string{ts.URL}
-	shots, err := Screenshot(ctx, urls, Quality(100))
+	input, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shot, err := Screenshot(ctx, input, Quality(100))
 	if err != nil {
 		t.Fatal(err.Error(), http.StatusServiceUnavailable)
 	}
-	shot := shots[0]
 	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
 		t.Fail()
 	}
@@ -157,11 +160,10 @@ func TestScreenshotFormat(t *testing.T) {
 		t.Fatalf("content type should be image/png, got: %s", contentType)
 	}
 
-	shots, err = Screenshot(ctx, urls, Format("jpg"))
+	shot, err = Screenshot(ctx, input, Format("jpg"))
 	if err != nil {
 		t.Fatal(err.Error(), http.StatusServiceUnavailable)
 	}
-	shot = shots[0]
 	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
 		t.Fail()
 	}
@@ -181,10 +183,12 @@ func TestScreenshotAsPDF(t *testing.T) {
 	ts := newServer()
 	defer ts.Close()
 
-	urls := []string{ts.URL}
-	shots, err := Screenshot(ctx, urls, ScaleFactor(1), PrintPDF(true))
+	input, err := url.Parse(ts.URL)
 	if err != nil {
-		t.Log(urls)
+		t.Fatal(err)
+	}
+	shot, err := Screenshot(ctx, input, ScaleFactor(1), PrintPDF(true))
+	if err != nil {
 		if err == context.DeadlineExceeded {
 			t.Error(err.Error(), http.StatusRequestTimeout)
 			return
@@ -193,22 +197,20 @@ func TestScreenshotAsPDF(t *testing.T) {
 		return
 	}
 
-	for _, shot := range shots {
-		if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
-			t.Fail()
-		}
+	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
+		t.Fail()
+	}
 
-		if shot.Title != "Example Domain" {
-			t.Log(shot.Title)
-			t.Fail()
-		}
+	if shot.Title != "Example Domain" {
+		t.Log(shot.Title)
+		t.Fail()
+	}
 
-		if shot.Image == nil {
-			t.Fail()
-		}
-		if shot.PDF == nil {
-			t.Error("unexpected screenshot as pdf")
-		}
+	if shot.Image == nil {
+		t.Fail()
+	}
+	if shot.PDF == nil {
+		t.Error("unexpected screenshot as pdf")
 	}
 }
 
@@ -219,10 +221,12 @@ func TestScreenshotAsHTML(t *testing.T) {
 	ts := newServer()
 	defer ts.Close()
 
-	urls := []string{ts.URL}
-	shots, err := Screenshot(ctx, urls, ScaleFactor(1), RawHTML(true))
+	input, err := url.Parse(ts.URL)
 	if err != nil {
-		t.Log(urls)
+		t.Fatal(err)
+	}
+	shot, err := Screenshot(ctx, input, ScaleFactor(1), RawHTML(true))
+	if err != nil {
 		if err == context.DeadlineExceeded {
 			t.Error(err.Error(), http.StatusRequestTimeout)
 			return
@@ -231,22 +235,20 @@ func TestScreenshotAsHTML(t *testing.T) {
 		return
 	}
 
-	for _, shot := range shots {
-		if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
-			t.Fail()
-		}
+	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
+		t.Fail()
+	}
 
-		if shot.Title != "Example Domain" {
-			t.Log(shot.Title)
-			t.Fail()
-		}
+	if shot.Title != "Example Domain" {
+		t.Log(shot.Title)
+		t.Fail()
+	}
 
-		if shot.Image == nil {
-			t.Fail()
-		}
-		if shot.HTML == nil {
-			t.Error("unexpected screenshot as raw html")
-		}
+	if shot.Image == nil {
+		t.Fail()
+	}
+	if shot.HTML == nil {
+		t.Error("unexpected screenshot as raw html")
 	}
 }
 

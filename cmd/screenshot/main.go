@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"net/url"
 	"os"
+	"sync"
 	"time"
 
 	"github.com/wabarc/helper"
@@ -42,64 +44,65 @@ func main() {
 		os.Exit(1)
 	}
 
+	var write = func(uri string, data []byte) {
+		if data == nil {
+			return
+		}
+
+		filename := helper.FileName(uri, http.DetectContentType(data))
+		if err := ioutil.WriteFile(filename, data, 0o644); err != nil {
+			fmt.Println(uri, "=>", err)
+			return
+		}
+		fmt.Println(uri, "=>", filename)
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
-	var str string
-	for _, arg := range args {
-		str += fmt.Sprintf(" %s", arg)
-	}
-
-	urls := helper.MatchURL(str)
-
-	var err error
-	var shots []screenshot.Screenshots
+	var shot screenshot.Screenshots
 	var opts = []screenshot.ScreenshotOption{
 		screenshot.ScaleFactor(1),
 		screenshot.PrintPDF(pdf), // print pdf
 		screenshot.RawHTML(raw),  // export html
 		screenshot.Quality(100),  // image quality
 	}
-	if remoteAddr != "" {
-		remote, er := screenshot.NewChromeRemoteScreenshoter(remoteAddr)
-		if er != nil {
-			fmt.Println(er)
-			return
-		}
-		shots, err = remote.Screenshot(ctx, urls, opts...)
-	} else {
-		shots, err = screenshot.Screenshot(ctx, urls, opts...)
-	}
-	if err != nil {
-		if err == context.DeadlineExceeded {
-			fmt.Println(err.Error())
-			return
-		}
-		fmt.Println(err.Error())
-		return
-	}
+	var wg sync.WaitGroup
+	for _, arg := range args {
+		wg.Add(1)
+		go func(link string) {
+			defer wg.Done()
+			input, err := url.Parse(link)
+			if err != nil {
+				fmt.Println(link, "=>", fmt.Sprintf("%v", err))
+				return
+			}
+			if remoteAddr != "" {
+				remote, er := screenshot.NewChromeRemoteScreenshoter(remoteAddr)
+				if er != nil {
+					fmt.Println(er)
+					return
+				}
+				shot, err = remote.Screenshot(ctx, input, opts...)
+			} else {
+				shot, err = screenshot.Screenshot(ctx, input, opts...)
+			}
+			if err != nil {
+				if err == context.DeadlineExceeded {
+					fmt.Println(err.Error())
+					return
+				}
+				fmt.Println(err.Error())
+				return
+			}
 
-	for _, shot := range shots {
-		if shot.URL == "" || shot.Image == nil {
-			continue
-		}
-		if img {
-			if err := ioutil.WriteFile(helper.FileName(shot.URL, http.DetectContentType(shot.Image)), shot.Image, 0o644); err != nil {
-				fmt.Println(err)
-				continue
+			if shot.URL == "" || shot.Image == nil {
+				return
 			}
-		}
-		if pdf {
-			if err := ioutil.WriteFile(helper.FileName(shot.URL, http.DetectContentType(shot.PDF)), shot.PDF, 0o644); err != nil {
-				fmt.Println(err)
-				continue
-			}
-		}
-		if raw {
-			if err := ioutil.WriteFile(helper.FileName(shot.URL, http.DetectContentType(shot.HTML)), shot.HTML, 0o644); err != nil {
-				fmt.Println(err)
-				continue
-			}
-		}
+			write(shot.URL, shot.Image)
+			write(shot.URL, shot.PDF)
+			write(shot.URL, shot.HTML)
+		}(arg)
 	}
+	wg.Wait()
 }
