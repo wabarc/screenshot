@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"math"
 	"net/http"
@@ -16,6 +17,7 @@ import (
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
+	"github.com/wabarc/helper"
 	"github.com/wabarc/logger"
 )
 
@@ -183,8 +185,8 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 	}
 
 	var html []byte
-	if raw != "" {
-		html = []byte(raw)
+	if rd, err := helper.UTF8Encoding(raw); err == nil {
+		html, _ = ioutil.ReadAll(rd)
 	}
 	shot = Screenshots{
 		URL:   revertURI(url),
