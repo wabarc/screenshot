@@ -5,14 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"math"
 	"net/http"
 	"net/url"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/chromedp/cdproto/emulation"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
@@ -229,33 +227,25 @@ func screenshotAction(res *[]byte, options ScreenshotOptions) chromedp.Action {
 				contentSize = cssContentSize
 			}
 
-			width, height := int64(math.Ceil(contentSize.Width)), int64(math.Ceil(contentSize.Height))
-
-			// force viewport emulation
-			err = emulation.SetDeviceMetricsOverride(width, height, 1, false).
-				WithScreenOrientation(&emulation.ScreenOrientation{
-					Type:  emulation.OrientationTypePortraitPrimary,
-					Angle: 0,
-				}).Do(ctx)
-			if err != nil {
-				return err
-			}
-			var clip page.Viewport
-			x, y := contentSize.X, contentSize.Y
-			clip.Width, clip.Height = contentSize.Width, contentSize.Height
-			clip.X, clip.Y = x, y
-			clip.Scale = 1
-
 			// Limit dimensions
 			if options.MaxHeight > 0 && contentSize.Height > float64(options.MaxHeight) {
 				contentSize.Height = float64(options.MaxHeight)
+			}
+			if options.MaxWidth > 0 && contentSize.Width > float64(options.MaxWidth) {
+				contentSize.Width = float64(options.MaxWidth)
 			}
 
 			*res, err = page.CaptureScreenshot().
 				WithCaptureBeyondViewport(true).
 				WithQuality(options.Quality).
 				WithFormat(options.Format).
-				WithClip(&clip).
+				WithClip(&page.Viewport{
+					X:      0,
+					Y:      0,
+					Width:  contentSize.Width,
+					Height: contentSize.Height,
+					Scale:  1,
+				}).
 				Do(ctx)
 			if err != nil {
 				return err
