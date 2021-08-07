@@ -86,8 +86,11 @@ func Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption
 		chromedp.NoDefaultBrowserCheck,
 		chromedp.Flag("ignore-certificate-errors", true),
 		chromedp.Flag("allow-running-insecure-content", true),
+		chromedp.Flag("no-default-browser-check", true),
 		chromedp.Flag("disable-web-security", true),
 		chromedp.Flag("disable-webgl", true),
+		chromedp.Flag("disable-gpu", true),
+		chromedp.Flag("no-first-run", true),
 	)
 	if noHeadless := os.Getenv("CHROMEDP_NO_HEADLESS"); noHeadless != "" && noHeadless != "false" {
 		allocOpts = append(allocOpts, chromedp.Flag("headless", false))
