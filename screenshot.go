@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -114,6 +115,11 @@ func Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption
 	}
 	if userAgent := os.Getenv("CHROMEDP_USER_AGENT"); userAgent != "" {
 		allocOpts = append(allocOpts, chromedp.UserAgent(userAgent))
+	}
+	dir, err := ioutil.TempDir(os.TempDir(), "chromedp-runner-*")
+	if err == nil && dir != "" {
+		defer os.RemoveAll(dir)
+		allocOpts = append(allocOpts, chromedp.UserDataDir(dir))
 	}
 	ctx, cancel := chromedp.NewExecAllocator(ctx, allocOpts...)
 	defer cancel()
@@ -237,9 +243,10 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 		network.Enable(),
 		// enableLifeCycleEvents(),
 		page.SetDownloadBehavior(page.SetDownloadBehaviorBehaviorDeny),
-		navigateAndWaitFor(url, "networkIdle"),
+		navigateAndWaitFor(url, "DOMContentLoaded"),
 		// chromedp.Navigate(url),
 		chromedp.WaitReady("body"),
+		chromedp.Sleep(time.Second),
 		evaluate(nil),
 		chromedp.Title(&title),
 		captureAction,
@@ -278,7 +285,7 @@ func evaluate(res interface{}) chromedp.EvaluateAction {
 	return chromedp.Tasks{
 		chromedp.EvaluateAsDevTools(`
 			var totalHeight = 0;
-			var distance = 100;
+			var distance = 85;
 			var timer = setInterval(() => {
 				var scrollHeight = document.body.scrollHeight;
 				window.scrollBy(0, distance);
