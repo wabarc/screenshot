@@ -42,6 +42,11 @@ func newServer() *httptest.Server {
 }
 
 func TestScreenshot(t *testing.T) {
+	binPath := helper.FindChromeExecPath()
+	if _, err := exec.LookPath(binPath); err != nil {
+		t.Skip("Chrome headless browser no found, skipped")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
@@ -77,16 +82,16 @@ func TestScreenshot(t *testing.T) {
 }
 
 func TestScreenshotWithRemote(t *testing.T) {
+	binPath := helper.FindChromeExecPath()
+	if _, err := exec.LookPath(binPath); err != nil {
+		t.Skip("Chrome headless browser no found, skipped")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
 	ts := newServer()
 	defer ts.Close()
-
-	binPath := helper.FindChromeExecPath()
-	if binPath == "" {
-		t.Skip("Chrome headless browser no found, skipped")
-	}
 
 	cmd := exec.Command(binPath, "--headless", "--disable-gpu", "--no-sandbox", "--remote-debugging-port=9222")
 	if err := cmd.Start(); err != nil {
@@ -135,6 +140,11 @@ func TestScreenshotWithRemote(t *testing.T) {
 }
 
 func TestScreenshotFormat(t *testing.T) {
+	binPath := helper.FindChromeExecPath()
+	if _, err := exec.LookPath(binPath); err != nil {
+		t.Skip("Chrome headless browser no found, skipped")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
@@ -177,6 +187,11 @@ func TestScreenshotFormat(t *testing.T) {
 }
 
 func TestScreenshotAsPDF(t *testing.T) {
+	binPath := helper.FindChromeExecPath()
+	if _, err := exec.LookPath(binPath); err != nil {
+		t.Skip("Chrome headless browser no found, skipped")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
@@ -215,6 +230,11 @@ func TestScreenshotAsPDF(t *testing.T) {
 }
 
 func TestScreenshotAsHTML(t *testing.T) {
+	binPath := helper.FindChromeExecPath()
+	if _, err := exec.LookPath(binPath); err != nil {
+		t.Skip("Chrome headless browser no found, skipped")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
 	defer cancel()
 
@@ -249,6 +269,46 @@ func TestScreenshotAsHTML(t *testing.T) {
 	}
 	if shot.HTML == nil {
 		t.Error("unexpected screenshot as raw html")
+	}
+}
+
+func TestScreenshotAsHAR(t *testing.T) {
+	binPath := helper.FindChromeExecPath()
+	if _, err := exec.LookPath(binPath); err != nil {
+		t.Skip("Chrome headless browser no found, skipped")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	ts := newServer()
+	defer ts.Close()
+
+	input, err := url.Parse(ts.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shot, err := Screenshot(ctx, input, ScaleFactor(1), DumpHAR(true))
+	if err != nil {
+		if err == context.DeadlineExceeded {
+			t.Error(err.Error(), http.StatusRequestTimeout)
+			return
+		}
+		t.Error(err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+
+	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
+		t.Fail()
+	}
+
+	if shot.Title != "Example Domain" {
+		t.Log(shot.Title)
+		t.Fail()
+	}
+
+	if shot.HAR == nil {
+		t.Error("unexpected screenshot as HAR")
 	}
 }
 

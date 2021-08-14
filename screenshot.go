@@ -1,6 +1,7 @@
 package screenshot
 
 import (
+	"container/list"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -8,12 +9,17 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
 	"strings"
+	"sync"
 	"time"
 
+	"github.com/chromedp/cdproto/cdp"
+	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
+	"github.com/wabarc/helper"
 	"github.com/wabarc/logger"
 )
 
@@ -30,6 +36,7 @@ type Screenshots struct {
 	Image []byte
 	HTML  []byte
 	PDF   []byte
+	HAR   []byte
 }
 
 // Screenshoter is a webpage screenshot interface.
@@ -78,7 +85,11 @@ func (s *chromeRemoteScreenshoter) Screenshot(ctx context.Context, input *url.UR
 	return screenshotStart(ctx, input, options...)
 }
 
-func Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (Screenshots, error) {
+func Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (shot Screenshots, err error) {
+	if _, err := exec.LookPath(helper.FindChromeExecPath()); err != nil {
+		return shot, err
+	}
+
 	// https://github.com/chromedp/chromedp/blob/b56cd66f9cebd6a1fa1283847bbf507409d48225/allocate.go#L53
 	var allocOpts = append(
 		chromedp.DefaultExecAllocatorOptions[:],
@@ -136,6 +147,7 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 	url := convertURI(input.String())
 	var buf []byte
 	var pdf []byte
+	var har []byte
 	var raw string
 	var title string
 
@@ -161,7 +173,62 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 		}
 	})
 
-	ctx, _ = chromedp.NewContext(ctx)
+	nRequests := list.New()
+	nResponses := list.New()
+	wg := sync.WaitGroup{}
+	chromedp.ListenTarget(ctx, func(v interface{}) {
+		switch v := v.(type) {
+		case *network.EventRequestWillBeSent:
+			wg.Add(1)
+			go func(r *network.EventRequestWillBeSent) {
+				var cookies []*network.Cookie
+				req := processRequest(r, cookies, opts)
+				rm := make(mRequests, 1)
+				rm[r.RequestID] = req
+				nRequests.PushBack(rm)
+				wg.Done()
+			}(v)
+		case *network.EventResponseReceived:
+			wg.Add(1)
+			go func(r *network.EventResponseReceived) {
+				var body []byte
+				var ids []cdp.NodeID
+				var cookies []*network.Cookie
+				_ = chromedp.Run(ctx,
+					chromedp.NodeIDs(`document`, &ids, chromedp.ByJSPath),
+					chromedp.ActionFunc(func(ctx context.Context) error {
+						body, err = network.GetResponseBody(r.RequestID).Do(ctx)
+						return err
+					}),
+					chromedp.ActionFunc(func(ctx context.Context) error {
+						cookies, err = network.GetAllCookies().Do(ctx)
+						return err
+					}),
+				)
+				res := processResponse(r, cookies, body, opts)
+				rm := make(mResponses, 1)
+				rm[r.RequestID] = res
+				nResponses.PushBack(rm)
+				wg.Done()
+			}(v)
+		case *network.EventDataReceived:
+			// Fired when data chunk was received over the network.
+			// go func() {
+			// 	edr := v.(*network.EventDataReceived)
+			// 	fmt.Printf("%#v\n", edr)
+			// }()
+			// case *network.EventLoadingFinished:
+			// 	go func() {
+			// 		lf := v.(*network.EventLoadingFinished)
+			// 	}()
+			// case *network.EventLoadingFailed:
+			// 	// Fired when HTTP request has failed to load.
+			// 	go func() {
+			// 		lf := v.(*network.EventLoadingFailed)
+			// 	}()
+		}
+	})
+
 	captureAction := screenshotAction(&buf, opts)
 	exportHTML := exportHTML(&raw, opts)
 	saveAsPDF := printPDF(&pdf, opts)
@@ -186,13 +253,18 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 		buf = nil
 	}
 
+	// Wait for all the go routines to complete
+	wg.Wait()
+
 	var html []byte
 	if raw != "" {
 		html = []byte(raw)
 	}
+	har, _ = compose(nRequests, nResponses, opts, url)
 	shot = Screenshots{
 		URL:   revertURI(url),
 		PDF:   pdf,
+		HAR:   har,
 		HTML:  html,
 		Image: buf,
 		Title: title,
@@ -281,7 +353,16 @@ func exportHTML(res *string, options ScreenshotOptions) chromedp.Action {
 	}
 
 	return chromedp.Tasks{
-		chromedp.OuterHTML("html", res, chromedp.ByQuery),
+		// chromedp.OuterHTML("html", res, chromedp.ByQuery),
+		chromedp.ActionFunc(func(ctx context.Context) error {
+			node, err := dom.GetDocument().Do(ctx)
+			if err != nil {
+				return err
+			}
+			*res, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
+
+			return err
+		}),
 	}
 }
 
@@ -365,6 +446,7 @@ type ScreenshotOptions struct {
 
 	PrintPDF bool
 	RawHTML  bool
+	DumpHAR  bool
 }
 
 type ScreenshotOption func(*ScreenshotOptions)
@@ -432,5 +514,11 @@ func PrintPDF(b bool) ScreenshotOption {
 func RawHTML(b bool) ScreenshotOption {
 	return func(opts *ScreenshotOptions) {
 		opts.RawHTML = b
+	}
+}
+
+func DumpHAR(b bool) ScreenshotOption {
+	return func(opts *ScreenshotOptions) {
+		opts.DumpHAR = b
 	}
 }

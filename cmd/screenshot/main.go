@@ -5,12 +5,13 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
+	"github.com/gabriel-vasile/mimetype"
 	"github.com/wabarc/helper"
 	"github.com/wabarc/screenshot"
 )
@@ -22,6 +23,7 @@ func main() {
 	var img bool
 	var pdf bool
 	var raw bool
+	var har bool
 
 	flag.Uint64Var(&timeout, "timeout", 60, "Screenshot timeout.")
 	flag.StringVar(&format, "format", "png", "Screenshot file format.")
@@ -29,6 +31,7 @@ func main() {
 	flag.BoolVar(&img, "img", false, "Save as image")
 	flag.BoolVar(&pdf, "pdf", false, "Save as PDF")
 	flag.BoolVar(&raw, "raw", false, "Save as raw html")
+	flag.BoolVar(&har, "har", false, "Export HAR")
 
 	flag.Parse()
 	if !img && !pdf && !raw {
@@ -49,7 +52,12 @@ func main() {
 			return
 		}
 
-		filename := helper.FileName(uri, http.DetectContentType(data))
+		mtype := mimetype.Detect(data)
+		filename := helper.FileName(uri, mtype.String())
+		// Replace json with har
+		if strings.HasSuffix(filename, ".json") {
+			filename = strings.TrimSuffix(filename, "json") + "har"
+		}
 		if err := ioutil.WriteFile(filename, data, 0o644); err != nil {
 			fmt.Println(uri, "=>", err)
 			return
@@ -65,6 +73,7 @@ func main() {
 		screenshot.ScaleFactor(1),
 		screenshot.PrintPDF(pdf), // print pdf
 		screenshot.RawHTML(raw),  // export html
+		screenshot.DumpHAR(har),  // export har
 		screenshot.Quality(100),  // image quality
 	}
 	var wg sync.WaitGroup
@@ -80,7 +89,7 @@ func main() {
 			if remoteAddr != "" {
 				remote, er := screenshot.NewChromeRemoteScreenshoter(remoteAddr)
 				if er != nil {
-					fmt.Println(er)
+					fmt.Println(link, "=>", er.Error())
 					return
 				}
 				shot, err = remote.Screenshot(ctx, input, opts...)
@@ -89,10 +98,10 @@ func main() {
 			}
 			if err != nil {
 				if err == context.DeadlineExceeded {
-					fmt.Println(err.Error())
+					fmt.Println(link, "=>", err.Error())
 					return
 				}
-				fmt.Println(err.Error())
+				fmt.Println(link, "=>", err.Error())
 				return
 			}
 
@@ -100,8 +109,9 @@ func main() {
 				return
 			}
 			write(shot.URL, shot.Image)
-			write(shot.URL, shot.PDF)
 			write(shot.URL, shot.HTML)
+			write(shot.URL, shot.PDF)
+			write(shot.URL, shot.HAR)
 		}(arg)
 	}
 	wg.Wait()
