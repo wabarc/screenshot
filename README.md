@@ -28,6 +28,14 @@ $ curl -sf https://gobinaries.com/wabarc/screenshot | sh
 
 From [releases](https://github.com/wabarc/screenshot/releases)
 
+## Environments
+
+- CHROMEDP_DEBUG
+- CHROMEDP_NO_HEADLESS
+- CHROMEDP_NO_SANDBOX
+- CHROMEDP_DISABLE_GPU
+- CHROMEDP_USER_AGENT
+
 ## Credits
 
 - [chromedp](https://github.com/chromedp)

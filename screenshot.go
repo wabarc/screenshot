@@ -101,6 +101,9 @@ func Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption
 	if disableGPU := os.Getenv("CHROMEDP_DISABLE_GPU"); disableGPU != "" && disableGPU != "false" {
 		allocOpts = append(allocOpts, chromedp.DisableGPU)
 	}
+	if userAgent := os.Getenv("CHROMEDP_USER_AGENT"); userAgent != "" {
+		allocOpts = append(allocOpts, chromedp.UserAgent(userAgent))
+	}
 	ctx, cancel := chromedp.NewExecAllocator(ctx, allocOpts...)
 	defer cancel()
 
