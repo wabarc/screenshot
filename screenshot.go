@@ -157,46 +157,29 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 	var raw string
 	var title string
 
-	chromedp.ListenTarget(ctx, func(ev interface{}) {
-		switch ev := ev.(type) {
-		case *page.EventJavascriptDialogOpening:
-			go func() {
-				if err := chromedp.Run(ctx,
-					page.HandleJavaScriptDialog(true),
-				); err != nil {
-					log.Print(err)
-				}
-			}()
-		// case *page.EventDocumentOpened:
-		// 	return
-		// case *network.EventRequestWillBeSent:
-		// 	return
-		// case *network.EventResponseReceived:
-		// 	return
-		case *network.EventLoadingFinished:
-			logger.Debug("[screenshot] EventLoadingFinished: %v", ev.RequestID)
-			return
-		}
-	})
-
 	nRequests := list.New()
 	nResponses := list.New()
 	wg := sync.WaitGroup{}
 	chromedp.ListenTarget(ctx, func(v interface{}) {
 		switch v := v.(type) {
+		case *page.EventJavascriptDialogOpening:
+			go func() {
+				_ = chromedp.Run(ctx, page.HandleJavaScriptDialog(true))
+			}()
 		case *network.EventRequestWillBeSent:
 			wg.Add(1)
 			go func(r *network.EventRequestWillBeSent) {
+				defer wg.Done()
 				var cookies []*network.Cookie
 				req := processRequest(r, cookies, opts)
 				rm := make(mRequests, 1)
 				rm[r.RequestID] = req
 				nRequests.PushBack(rm)
-				wg.Done()
 			}(v)
 		case *network.EventResponseReceived:
 			wg.Add(1)
 			go func(r *network.EventResponseReceived) {
+				defer wg.Done()
 				var body []byte
 				var ids []cdp.NodeID
 				var cookies []*network.Cookie
@@ -215,7 +198,6 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 				rm := make(mResponses, 1)
 				rm[r.RequestID] = res
 				nResponses.PushBack(rm)
-				wg.Done()
 			}(v)
 		case *network.EventDataReceived:
 			// Fired when data chunk was received over the network.
