@@ -6,9 +6,9 @@ ORGNAME := wabarc
 PROJECT := screenshot
 BINDIR ?= ./build/binary
 PACKDIR ?= ./build/package
-LDFLAGS := $(shell echo "-X 'telegra.ph/version.Version=`git describe --tags --abbrev=0`'")
-LDFLAGS := $(shell echo "${LDFLAGS} -X 'telegra.ph/version.Commit=`git rev-parse --short HEAD`'")
-LDFLAGS := $(shell echo "${LDFLAGS} -X 'telegra.ph/version.BuildDate=`date +%FT%T%z`'")
+LDFLAGS := $(shell echo "-X '${PROJECT}/version.Version=`git describe --tags --abbrev=0`'")
+LDFLAGS := $(shell echo "${LDFLAGS} -X '${PROJECT}/version.Commit=`git rev-parse --short HEAD`'")
+LDFLAGS := $(shell echo "${LDFLAGS} -X '${PROJECT}/version.BuildDate=`date +%FT%T%z`'")
 GOBUILD ?= go build -trimpath --ldflags "-s -w ${LDFLAGS} -buildid=" -v
 GOFILES ?= $(wildcard ./cmd/${PROJECT}/*.go)
 VERSION ?= $(shell git describe --tags `git rev-list --tags --max-count=1` | sed -e 's/v//g')
