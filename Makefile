@@ -104,7 +104,8 @@ test:
 	@echo "-> Running go test"
 	$(DOCKER) run -ti --rm -v ${PWD}/../:${HOMEDIR} ${IMAGE} sh -c "\
 		cd ${HOMEDIR}/${PROJECT} && \
-		go test -v ./..."
+		CGO_ENABLED=1 go test -v -race -cover -coverprofile=coverage.out -covermode=atomic -parallel=1 ./..."
+	@go tool cover -func=coverage.out
 
 vet:
 	@echo "-> Running go vet"

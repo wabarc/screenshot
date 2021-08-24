@@ -7,6 +7,7 @@ on:
       - "**/*.go"
       - "go.mod"
       - "go.sum"
+      - "Makefile"
   pull_request:
     branches: [ main ]
     types: [ opened, synchronize, reopened ]
@@ -14,6 +15,7 @@ on:
       - "**/*.go"
       - "go.mod"
       - "go.sum"
+      - "Makefile"
 
 jobs:
   test:
