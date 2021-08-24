@@ -5,12 +5,12 @@
 package screenshot // import "github.com/wabarc/screenshot"
 
 import (
-	"container/list"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/url"
+	"sync"
 	"time"
 
 	"github.com/chromedp/cdproto/har"
@@ -21,8 +21,6 @@ import (
 // copied from https://github.com/chromedp/chromedp/issues/42#issuecomment-500191682
 type hRequest har.Request
 type hResponse har.Response
-type mRequests map[network.RequestID]*hRequest
-type mResponses map[network.RequestID]*hResponse
 
 type creator struct {
 	Name    string `json:"name"`
@@ -185,54 +183,34 @@ func processResponse(r *network.EventResponseReceived, cookies []*network.Cookie
 	return &res
 }
 
-func compose(nRequests, nResponses *list.List, options ScreenshotOptions, uri string) (buf []byte, err error) {
+func compose(requestsID []network.RequestID, mRequests, mResponses *sync.Map, options ScreenshotOptions, uri string) (buf []byte, err error) {
 	if !options.DumpHAR {
 		return buf, err
 	}
 
-	responses := make(mResponses, nResponses.Len())
-	for e := nResponses.Front(); e != nil; e = e.Next() {
-		r, ok := e.Value.(mResponses)
-		if !ok {
-			continue
-		}
-		for k := range r {
-			_, er := json.Marshal(r[k])
-			if er != nil {
-				err = errors.Wrap(err, er.Error())
-				continue
-			}
-			responses[k] = r[k]
-		}
-	}
-
 	pageID := "page_1"
 	var entries []entry
-	for e := nRequests.Front(); e != nil; e = e.Next() {
-		r, ok := e.Value.(mRequests)
+	for reqID := range requestsID {
+		vreq, ok := mRequests.Load(requestsID[reqID])
 		if !ok {
 			continue
 		}
-		for k := range r {
-			_, er := json.Marshal(e)
-			if er != nil {
-				err = errors.Wrap(err, er.Error())
-				continue
-			}
-			resp := responses[k]
-			entries = append(entries, entry{
-				Pageref:         pageID,
-				StartedDateTime: start.Format(time.RFC3339Nano),
-				Time:            0,
-				Request:         r[k],
-				Response:        resp,
-				// Cache: ,
-				// Timings: ,
-				// ServerIPAddress: ,
-				// Connection: ,
-				// Comment: ,
-			})
+		vres, ok := mResponses.Load(requestsID[reqID])
+		if !ok {
+			continue
 		}
+		entries = append(entries, entry{
+			Pageref:         pageID,
+			StartedDateTime: start.Format(time.RFC3339Nano),
+			Time:            0,
+			Request:         vreq.(*hRequest),
+			Response:        vres.(*hResponse),
+			// Cache: ,
+			// Timings: ,
+			// ServerIPAddress: ,
+			// Connection: ,
+			// Comment: ,
+		})
 	}
 
 	har := HAR{

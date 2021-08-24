@@ -1,7 +1,6 @@
 package screenshot
 
 import (
-	"container/list"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -157,13 +156,17 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 	var raw string
 	var title string
 
-	nRequests := list.New()
-	nResponses := list.New()
+	nRequests := &sync.Map{}
+	nResponses := &sync.Map{}
+	requestsID := []network.RequestID{}
 	wg := sync.WaitGroup{}
+	mu := sync.Mutex{}
 	chromedp.ListenTarget(ctx, func(v interface{}) {
 		switch v := v.(type) {
 		case *page.EventJavascriptDialogOpening:
 			go func() {
+				ctx, cancel := context.WithTimeout(ctx, time.Second)
+				defer cancel()
 				_ = chromedp.Run(ctx, page.HandleJavaScriptDialog(true))
 			}()
 		case *network.EventRequestWillBeSent:
@@ -172,9 +175,10 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 				defer wg.Done()
 				var cookies []*network.Cookie
 				req := processRequest(r, cookies, opts)
-				rm := make(mRequests, 1)
-				rm[r.RequestID] = req
-				nRequests.PushBack(rm)
+				nRequests.Store(r.RequestID, req)
+				mu.Lock()
+				requestsID = append(requestsID, r.RequestID)
+				mu.Unlock()
 			}(v)
 		case *network.EventResponseReceived:
 			wg.Add(1)
@@ -183,6 +187,9 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 				var body []byte
 				var ids []cdp.NodeID
 				var cookies []*network.Cookie
+				ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+				defer cancel()
+				mu.Lock()
 				_ = chromedp.Run(ctx,
 					chromedp.NodeIDs(`document`, &ids, chromedp.ByJSPath),
 					chromedp.ActionFunc(func(ctx context.Context) error {
@@ -194,10 +201,9 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 						return err
 					}),
 				)
+				mu.Unlock()
 				res := processResponse(r, cookies, body, opts)
-				rm := make(mResponses, 1)
-				rm[r.RequestID] = res
-				nResponses.PushBack(rm)
+				nResponses.Store(r.RequestID, res)
 			}(v)
 		case *network.EventDataReceived:
 			// Fired when data chunk was received over the network.
@@ -249,7 +255,7 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 	if raw != "" {
 		html = []byte(raw)
 	}
-	har, _ = compose(nRequests, nResponses, opts, url)
+	har, _ = compose(requestsID, nRequests, nResponses, opts, url)
 	shot = Screenshots{
 		URL:   revertURI(url),
 		PDF:   pdf,
