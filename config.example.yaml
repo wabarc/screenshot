@@ -16,3 +16,10 @@ cookies:
   example.org:
     - name: 'foo'
       value: 'bar'
+local-storage:
+  example.com:
+    - key: 'foo'
+      value: 'bar'
+      host: 'example.com'
+    - key: 'foo'
+      value: 'bar'

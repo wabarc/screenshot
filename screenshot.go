@@ -18,6 +18,7 @@ import (
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
+	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 	"github.com/pkg/errors"
 	"github.com/wabarc/helper"
@@ -234,6 +235,7 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 		network.Enable(),
 		// enableLifeCycleEvents(),
 		setCookies(opts),
+		setLocalStorage(input, opts),
 		page.SetDownloadBehavior(page.SetDownloadBehaviorBehaviorDeny),
 		navigateAndWaitFor(url, "DOMContentLoaded"),
 		// chromedp.Navigate(url),
@@ -313,6 +315,31 @@ func setCookies(options ScreenshotOptions) chromedp.Action {
 					Do(ctx)
 				if er != nil {
 					err = errors.Wrap(err, er.Error())
+				}
+			}
+			return err
+		}),
+	}
+}
+
+func setLocalStorage(u *url.URL, options ScreenshotOptions) chromedp.Action {
+	if len(options.Storage) == 0 {
+		return chromedp.Tasks{}
+	}
+
+	return chromedp.Tasks{
+		chromedp.ActionFunc(func(ctx context.Context) (err error) {
+			for key := range options.Storage {
+				item := options.Storage[key]
+				if u.Host != item.Host {
+					continue
+				}
+				_, exp, er := runtime.Evaluate(fmt.Sprintf(`window.localStorage.setItem('%s', '%s')`, item.Key, item.Value)).Do(ctx)
+				if er != nil {
+					err = errors.Wrap(err, er.Error())
+				}
+				if exp != nil {
+					err = errors.Wrap(err, exp.Error())
 				}
 			}
 			return err
@@ -477,6 +504,7 @@ type ScreenshotOptions struct {
 	DumpHAR  bool
 
 	Cookies []Cookie
+	Storage []LocalStorage
 }
 
 type ScreenshotOption func(*ScreenshotOptions)
@@ -601,5 +629,37 @@ func ImportCookies(r []byte) (cookies []Cookie, err error) {
 func Cookies(cookies []Cookie) ScreenshotOption {
 	return func(opts *ScreenshotOptions) {
 		opts.Cookies = cookies
+	}
+}
+
+// LocalStorage represents a local storage item.
+type LocalStorage struct {
+	Key   string
+	Value string
+	Host  string
+}
+
+func ImportStorage(r []byte) (storage []LocalStorage, err error) {
+	type configs struct {
+		LocalStorage map[string][]LocalStorage `yaml:"local-storage"`
+	}
+	var cfg configs
+	if err := yaml.Unmarshal(r, &cfg); err != nil {
+		return nil, err
+	}
+	for domain, items := range cfg.LocalStorage {
+		for i := range items {
+			if items[i].Host == "" {
+				items[i].Host = domain
+			}
+			storage = append(storage, items[i])
+		}
+	}
+	return storage, nil
+}
+
+func Storage(storage []LocalStorage) ScreenshotOption {
+	return func(opts *ScreenshotOptions) {
+		opts.Storage = storage
 	}
 }

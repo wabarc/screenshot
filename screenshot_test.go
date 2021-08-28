@@ -432,3 +432,29 @@ func TestScreenshotWithCookies(t *testing.T) {
 		t.Errorf("unexpected screenshot with cookie got %s instead of %s", got, exp)
 	}
 }
+
+func TestImportLocalStorage(t *testing.T) {
+	f := `local-storage:
+  example.com:
+    - key: 'foo'
+      value: 'bar'
+      host: 'example.com'
+    - key: 'foo'
+      value: 'bar'`
+	storage, err := ImportStorage([]byte(f))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if exp, num := 2, len(storage); num != exp {
+		t.Fatalf("unexpected import storage got number of storage %d instead of %d", num, exp)
+	}
+
+	if exp, host := "example.com", storage[0].Host; host != exp {
+		t.Errorf("unexpected import storage got the first host %s instead of %s", host, exp)
+	}
+
+	if exp, host := "example.com", storage[1].Host; host != exp {
+		t.Errorf("unexpected import storage got the first host %s instead of %s", host, exp)
+	}
+}

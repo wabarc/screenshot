@@ -70,6 +70,9 @@ func main() {
 			if configs, err := screenshot.ImportCookies(buf); err == nil {
 				opts = append(opts, screenshot.Cookies(configs))
 			}
+			if configs, err := screenshot.ImportStorage(buf); err == nil {
+				opts = append(opts, screenshot.Storage(configs))
+			}
 		}
 	}
 	var wg sync.WaitGroup
