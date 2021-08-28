@@ -73,6 +73,7 @@ type HAR struct {
 }
 
 var start = time.Now()
+var format = "2006-01-02T15:04:05.000Z"
 
 // process requests and return a structured data
 func processRequest(r *network.EventRequestWillBeSent, cookies []*network.Cookie, options ScreenshotOptions) *hRequest {
@@ -189,6 +190,7 @@ func compose(requestsID []network.RequestID, mRequests, mResponses *sync.Map, op
 	}
 
 	pageID := "page_1"
+	st := start.Format(format)
 	var entries []entry
 	for reqID := range requestsID {
 		vreq, ok := mRequests.Load(requestsID[reqID])
@@ -201,7 +203,7 @@ func compose(requestsID []network.RequestID, mRequests, mResponses *sync.Map, op
 		}
 		entries = append(entries, entry{
 			Pageref:         pageID,
-			StartedDateTime: start.Format(time.RFC3339Nano),
+			StartedDateTime: st,
 			Time:            0,
 			Request:         vreq.(*hRequest),
 			Response:        vres.(*hResponse),
@@ -225,7 +227,7 @@ func compose(requestsID []network.RequestID, mRequests, mResponses *sync.Map, op
 				hpage{
 					ID:              pageID,
 					Title:           uri,
-					StartedDateTime: start.Format(time.RFC3339Nano),
+					StartedDateTime: st,
 					PageTimings: pageTimings{
 						OnContentLoad: -1,
 						OnLoad:        -1,
