@@ -76,7 +76,7 @@ var start = time.Now()
 var format = "2006-01-02T15:04:05.000Z"
 
 // process requests and return a structured data
-func processRequest(r *network.EventRequestWillBeSent, cookies []*network.Cookie, options ScreenshotOptions) *hRequest {
+func processRequest(r *network.EventRequestWillBeSent, _ []*network.Cookie, options ScreenshotOptions) *hRequest {
 	req := hRequest{}
 	if !options.DumpHAR {
 		return &req
@@ -124,9 +124,6 @@ func processRequest(r *network.EventRequestWillBeSent, cookies []*network.Cookie
 	}
 	// req.Postdata points to the post data.
 	req.PostData = nil
-	//if req.Method == "POST" {
-	//// Process the post data of the form *har.PostData
-	//}
 	// TODO : to implement headersize and bodySize for the request
 	req.HeadersSize = 0
 	req.BodySize = 0

@@ -17,13 +17,13 @@ This repository is a *work in progress*.
 From source:
 
 ```sh
-$ go get github.com/wabarc/screenshot
+go get github.com/wabarc/screenshot
 ```
 
 From [gobinaries.com](https://gobinaries.com):
 
 ```sh
-$ curl -sf https://gobinaries.com/wabarc/screenshot | sh
+curl -sf https://gobinaries.com/wabarc/screenshot | sh
 ```
 
 From [releases](https://github.com/wabarc/screenshot/releases)

@@ -76,7 +76,7 @@ func NewChromeRemoteScreenshoter(addr string) (Screenshoter, error) {
 
 func (s *chromeRemoteScreenshoter) Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (shot Screenshots, err error) {
 	if s.url == "" {
-		return shot, fmt.Errorf("Can't connect to headless browser")
+		return shot, fmt.Errorf("can't connect to headless browser")
 	}
 
 	ctx, cancel := chromedp.NewRemoteAllocator(ctx, s.url)
@@ -103,13 +103,14 @@ func Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption
 		chromedp.Flag("disable-gpu", true),
 		chromedp.Flag("no-first-run", true),
 	)
-	if noHeadless := os.Getenv("CHROMEDP_NO_HEADLESS"); noHeadless != "" && noHeadless != "false" {
+	f := "false"
+	if noHeadless := os.Getenv("CHROMEDP_NO_HEADLESS"); noHeadless != "" && noHeadless != f {
 		allocOpts = append(allocOpts, chromedp.Flag("headless", false))
 	}
-	if noSandbox := os.Getenv("CHROMEDP_NO_SANDBOX"); noSandbox != "" && noSandbox != "false" {
+	if noSandbox := os.Getenv("CHROMEDP_NO_SANDBOX"); noSandbox != "" && noSandbox != f {
 		allocOpts = append(allocOpts, chromedp.NoSandbox)
 	}
-	if disableGPU := os.Getenv("CHROMEDP_DISABLE_GPU"); disableGPU != "" && disableGPU != "false" {
+	if disableGPU := os.Getenv("CHROMEDP_DISABLE_GPU"); disableGPU != "" && disableGPU != f {
 		allocOpts = append(allocOpts, chromedp.DisableGPU)
 	}
 	if userAgent := os.Getenv("CHROMEDP_USER_AGENT"); userAgent != "" {
@@ -415,6 +416,7 @@ func waitFor(ctx context.Context, eventName string) error {
 				cancel()
 				close(ch)
 			}
+		default:
 		}
 	})
 	select {
@@ -423,7 +425,6 @@ func waitFor(ctx context.Context, eventName string) error {
 	case <-ctx.Done():
 		return ctx.Err()
 	}
-
 }
 
 // ScreenshotOptions is the options used by Screenshot.

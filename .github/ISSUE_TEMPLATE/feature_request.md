@@ -9,7 +9,9 @@ assignees: ''
 
 NB: Feature requests will only be considered if they solve a pain
 
+<!-- markdownlint-disable MD025 -->
 # Summary
+<!-- markdownlint-enable MD025 -->
 
 ## Problem
 
@@ -23,7 +25,7 @@ The impact of not having this feature
 
 Describe the solution
 
-# Detail
+## Detail
 
 **Is your feature request related to a problem? Please describe.**
 A clear and concise description of what the problem is. Ex. I'm always frustrated when [...]

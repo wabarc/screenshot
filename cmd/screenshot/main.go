@@ -47,24 +47,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	var write = func(uri string, data []byte) {
-		if data == nil {
-			return
-		}
-
-		mtype := mimetype.Detect(data)
-		filename := helper.FileName(uri, mtype.String())
-		// Replace json with har
-		if strings.HasSuffix(filename, ".json") {
-			filename = strings.TrimSuffix(filename, "json") + "har"
-		}
-		if err := ioutil.WriteFile(filename, data, 0o644); err != nil {
-			fmt.Println(uri, "=>", err)
-			return
-		}
-		fmt.Println(uri, "=>", filename)
-	}
-
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
@@ -77,7 +59,7 @@ func main() {
 		screenshot.Quality(100),  // image quality
 	}
 	var wg sync.WaitGroup
-	for _, arg := range args {
+	for k := range args {
 		wg.Add(1)
 		go func(link string) {
 			defer wg.Done()
@@ -108,11 +90,29 @@ func main() {
 			if shot.URL == "" || shot.Image == nil {
 				return
 			}
-			write(shot.URL, shot.Image)
-			write(shot.URL, shot.HTML)
-			write(shot.URL, shot.PDF)
-			write(shot.URL, shot.HAR)
-		}(arg)
+			writeFile(shot.URL, shot.Image)
+			writeFile(shot.URL, shot.HTML)
+			writeFile(shot.URL, shot.PDF)
+			writeFile(shot.URL, shot.HAR)
+		}(args[k])
 	}
 	wg.Wait()
+}
+
+func writeFile(uri string, data []byte) {
+	if data == nil {
+		return
+	}
+
+	mtype := mimetype.Detect(data)
+	filename := helper.FileName(uri, mtype.String())
+	// Replace json with har
+	if strings.HasSuffix(filename, ".json") {
+		filename = strings.TrimSuffix(filename, "json") + "har"
+	}
+	if err := ioutil.WriteFile(filename, data, 0o600); err != nil {
+		fmt.Println(uri, "=>", err)
+		return
+	}
+	fmt.Println(uri, "=>", filename)
 }
