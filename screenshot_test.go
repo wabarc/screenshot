@@ -320,7 +320,8 @@ func TestConvertURI(t *testing.T) {
 		io.WriteString(w, "Fake Content") // nolint:errcheck
 	}))
 
-	uri := convertURI(server.URL)
+	inp, _ := url.Parse(server.URL)
+	uri := convertURI(inp)
 	if !strings.Contains(uri, "docs.google.com") {
 		t.Errorf("unexpected convert document content viewer url got %s instead of %s", uri, "docs.google.com")
 	}

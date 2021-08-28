@@ -153,7 +153,7 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 	// 	return nil, err
 	// }
 
-	url := convertURI(input.String())
+	url := convertURI(input)
 	var buf []byte
 	var pdf []byte
 	var har []byte

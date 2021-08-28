@@ -9,21 +9,18 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 )
 
 func viewerEndpoint() string {
 	return "https://docs.google.com/viewer?url="
 }
 
-func convertURI(link string) string {
-	uri, err := url.Parse(link)
+func convertURI(u *url.URL) string {
+	client := http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Head(u.String())
 	if err != nil {
-		return link
-	}
-
-	resp, err := http.Head(uri.String())
-	if err != nil {
-		return link
+		return u.String()
 	}
 	resp.Body.Close()
 
@@ -37,10 +34,10 @@ func convertURI(link string) string {
 		"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 		"application/vnd.ms-excel", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
 		"application/vnd.ms-powerpoint", "application/vnd.openxmlformats-officedocument.presentationml.presentation":
-		return viewerEndpoint() + uri.String()
+		return viewerEndpoint() + u.String()
 	}
 
-	return link
+	return u.String()
 }
 
 func revertURI(link string) string {
