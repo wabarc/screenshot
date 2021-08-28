@@ -7,9 +7,9 @@ package screenshot // import "github.com/wabarc/screenshot"
 import (
 	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -139,20 +139,25 @@ func processResponse(r *network.EventResponseReceived, cookies []*network.Cookie
 		return &res
 	}
 
+	uri := r.Response.URL
 	res.Status = r.Response.Status
 	res.StatusText = http.StatusText(int(r.Response.Status))
 	res.HTTPVersion = r.Response.Protocol
-	// TODO : implement cookie information.
 	res.Cookies = []*har.Cookie{}
-	for _, c := range cookies {
+	for ck := range cookies {
+		dm := strings.TrimPrefix(cookies[ck].Domain, ".")
+		if !strings.Contains(uri, dm) {
+			continue
+		}
+		tm := time.Unix(int64(cookies[ck].Expires), 0)
 		hc := &har.Cookie{
-			Name:     c.Name,
-			Value:    c.Value,
-			Path:     c.Path,
-			Domain:   c.Domain,
-			Expires:  fmt.Sprint(c.Expires),
-			HTTPOnly: c.HTTPOnly,
-			Secure:   c.Secure,
+			Name:     cookies[ck].Name,
+			Value:    cookies[ck].Value,
+			Path:     cookies[ck].Path,
+			Domain:   cookies[ck].Domain,
+			Expires:  tm.Format(format),
+			HTTPOnly: cookies[ck].HTTPOnly,
+			Secure:   cookies[ck].Secure,
 			Comment:  "",
 		}
 		res.Cookies = append(res.Cookies, hc)
