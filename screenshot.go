@@ -19,8 +19,10 @@ import (
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
+	"github.com/pkg/errors"
 	"github.com/wabarc/helper"
 	"github.com/wabarc/logger"
+	"gopkg.in/yaml.v2"
 )
 
 func init() {
@@ -231,6 +233,7 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 		page.Enable(),
 		network.Enable(),
 		// enableLifeCycleEvents(),
+		setCookies(opts),
 		page.SetDownloadBehavior(page.SetDownloadBehaviorBehaviorDeny),
 		navigateAndWaitFor(url, "DOMContentLoaded"),
 		// chromedp.Navigate(url),
@@ -285,6 +288,35 @@ func evaluate(res interface{}) chromedp.EvaluateAction {
 			}, 100)
 		`, res),
 		chromedp.Sleep(15 * time.Second),
+	}
+}
+
+func setCookies(options ScreenshotOptions) chromedp.Action {
+	if len(options.Cookies) == 0 {
+		return chromedp.Tasks{}
+	}
+
+	return chromedp.Tasks{
+		chromedp.ActionFunc(func(ctx context.Context) (err error) {
+			for key := range options.Cookies {
+				cookie := options.Cookies[key]
+				expire := cdp.TimeSinceEpoch(cookie.Expires)
+				er := network.SetCookie(cookie.Name, cookie.Value).
+					WithDomain(cookie.Domain).
+					WithPath(cookie.Path).
+					WithExpires(&expire).
+					WithHTTPOnly(cookie.HTTPOnly).
+					WithSecure(cookie.Secure).
+					WithSameParty(cookie.SameParty).
+					WithSameSite(network.CookieSameSite(cookie.SameSite)).
+					WithPriority(network.CookiePriority(cookie.Priority)).
+					Do(ctx)
+				if er != nil {
+					err = errors.Wrap(err, er.Error())
+				}
+			}
+			return err
+		}),
 	}
 }
 
@@ -443,6 +475,8 @@ type ScreenshotOptions struct {
 	PrintPDF bool
 	RawHTML  bool
 	DumpHAR  bool
+
+	Cookies []Cookie
 }
 
 type ScreenshotOption func(*ScreenshotOptions)
@@ -516,5 +550,56 @@ func RawHTML(b bool) ScreenshotOption {
 func DumpHAR(b bool) ScreenshotOption {
 	return func(opts *ScreenshotOptions) {
 		opts.DumpHAR = b
+	}
+}
+
+// Cookie represents a cookie item.
+type Cookie struct {
+	Name      string    `yaml:"name"`                // Cookie name.
+	Value     string    `yaml:"value"`               // Cookie value.
+	Domain    string    `yaml:"domain"`              // Cookie domain.
+	Path      string    `yaml:"path,omitempty"`      // Cookie path.
+	Expires   time.Time `yaml:"expires,omitempty"`   // Cookie expiration date, session cookie if not set
+	Size      int       `yaml:"size,omitempty"`      // Cookie size.
+	HTTPOnly  bool      `yaml:"httpOnly,omitempty"`  // True if cookie is http-only.
+	Secure    bool      `yaml:"secure,omitempty"`    // True if cookie is secure.
+	SameSite  string    `yaml:"sameSite,omitempty"`  // Cookie SameSite type.
+	SameParty bool      `yaml:"sameParty,omitempty"` // True if cookie is SameParty.
+	Priority  string    `yaml:"priority,omitempty"`  // Cookie Priority type.
+}
+
+// ImportCookies imports cookies by given byte with yaml configuration.
+// Format:
+// cookies:
+//   example.com:
+//     - name: 'foo'
+//       value: 'bar'
+//     - name: 'zoo'
+//       value: 'zoo'
+//   example.org:
+//     - name: 'foo'
+//       value: 'bar'
+func ImportCookies(r []byte) (cookies []Cookie, err error) {
+	type configs struct {
+		Cookies map[string][]Cookie `yaml:"cookies"`
+	}
+	var cfg configs
+	if err := yaml.Unmarshal(r, &cfg); err != nil {
+		return nil, err
+	}
+	for domain, items := range cfg.Cookies {
+		for i := range items {
+			if items[i].Domain == "" {
+				items[i].Domain = domain
+			}
+			cookies = append(cookies, items[i])
+		}
+	}
+	return cookies, nil
+}
+
+func Cookies(cookies []Cookie) ScreenshotOption {
+	return func(opts *ScreenshotOptions) {
+		opts.Cookies = cookies
 	}
 }

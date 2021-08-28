@@ -1,0 +1,18 @@
+cookies:
+  example.com:
+    - name: 'foo'
+      value: 'bar'
+      domain: 'example.com'
+      path: '/'
+      expires: '2022-08-12T11:57:14.005Z'
+      size: 32
+      httpOnly: true
+      secure: true
+      sameSite: 'Lax'
+      sameParty: false
+      priority: 'Medium'
+    - name: 'zoo'
+      value: 'zoo'
+  example.org:
+    - name: 'foo'
+      value: 'bar'

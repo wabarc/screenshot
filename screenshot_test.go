@@ -2,6 +2,8 @@ package screenshot
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -321,5 +323,112 @@ func TestConvertURI(t *testing.T) {
 	uri := convertURI(server.URL)
 	if !strings.Contains(uri, "docs.google.com") {
 		t.Errorf("unexpected convert document content viewer url got %s instead of %s", uri, "docs.google.com")
+	}
+}
+
+func TestImportCookies(t *testing.T) {
+	f := `cookies:
+  example.com:
+    - name: 'foo'
+      value: 'bar'
+      domain: 'example.com'
+      path: '/'
+      expires: '2022-08-12T11:57:14.005Z'
+      size: 32
+      httpOnly: true
+      secure: true
+      sameSite: 'Lax'
+      sameParty: false
+      priority: 'Medium'
+    - name: 'zoo'
+      value: 'zoo'
+  example.org:
+    - name: 'foo'
+      value: 'bar'`
+	cookies, err := ImportCookies([]byte(f))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if exp, num := 3, len(cookies); num != exp {
+		t.Fatalf("unexpected import cookies got number of cookies %d instead of %d", num, exp)
+	}
+
+	if exp, domain := "example.com", cookies[0].Domain; domain != exp {
+		t.Errorf("unexpected import cookies got the first domain %s instead of %s", domain, exp)
+	}
+
+	if exp, domain := "example.com", cookies[1].Domain; domain != exp {
+		t.Errorf("unexpected import cookies got the first domain %s instead of %s", domain, exp)
+	}
+}
+
+func TestScreenshotWithCookies(t *testing.T) {
+	binPath := helper.FindChromeExecPath()
+	if _, err := exec.LookPath(binPath); err != nil {
+		t.Skip("Chrome headless browser no found, skipped")
+	}
+
+	_, mux, server := helper.MockServer()
+	mux.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
+		cookies := req.Cookies()
+		if len(cookies) == 0 {
+			http.Error(res, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+		_, err := json.MarshalIndent(cookies, "", "  ")
+		if err != nil {
+			http.Error(res, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		if cookies[0].String() == "foo=bar" {
+			fmt.Fprintf(res, "ok")
+		} else {
+			fmt.Fprintf(res, "")
+		}
+	})
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+	defer cancel()
+
+	ts := newServer()
+	defer ts.Close()
+
+	input, err := url.Parse(server.URL)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	f := `cookies:
+  localhost:
+    - name: 'foo'
+      value: 'bar'
+      domain: '127.0.0.1'
+      path: '/'
+      expires: '2022-08-12T11:57:14.005Z'
+      size: 32
+      httpOnly: true
+      secure: true
+      sameSite: 'Lax'
+      sameParty: false
+      priority: 'Medium'`
+	cookies, err := ImportCookies([]byte(f))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	shot, err := Screenshot(ctx, input, RawHTML(true), Cookies(cookies))
+	if err != nil {
+		if err == context.DeadlineExceeded {
+			t.Error(err.Error(), http.StatusRequestTimeout)
+			return
+		}
+		t.Error(err.Error(), http.StatusServiceUnavailable)
+		return
+	}
+
+	html := `<html><head></head><body><pre style="word-wrap: break-word; white-space: pre-wrap;">ok</pre></body></html>`
+	if exp, got := html, string(shot.HTML); exp != got {
+		t.Errorf("unexpected screenshot with cookie got %s instead of %s", got, exp)
 	}
 }
