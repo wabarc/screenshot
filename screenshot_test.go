@@ -355,11 +355,11 @@ func TestImportCookies(t *testing.T) {
 		t.Fatalf("unexpected import cookies got number of cookies %d instead of %d", num, exp)
 	}
 
-	if exp, domain := "example.com", cookies[0].Domain; domain != exp {
+	if exp, domain := "example", cookies[0].Domain; !strings.HasPrefix(domain, exp) {
 		t.Errorf("unexpected import cookies got the first domain %s instead of %s", domain, exp)
 	}
 
-	if exp, domain := "example.com", cookies[1].Domain; domain != exp {
+	if exp, domain := "example", cookies[1].Domain; !strings.HasPrefix(domain, exp) {
 		t.Errorf("unexpected import cookies got the first domain %s instead of %s", domain, exp)
 	}
 }
