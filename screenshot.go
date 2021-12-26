@@ -259,7 +259,7 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 
 	var html []byte
 	if raw != "" {
-		html = []byte(raw)
+		html = helper.String2Byte(raw)
 	}
 	har, _ = compose(requestsID, nRequests, nResponses, opts, url)
 	shot = Screenshots{
