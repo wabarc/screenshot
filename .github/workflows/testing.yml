@@ -2,14 +2,18 @@ name: Testing
 
 on:
   push:
-    branches: [ main ]
+    branches:
+      - main
+      - develop
     paths:
       - "**/*.go"
       - "go.mod"
       - "go.sum"
       - "Makefile"
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+      - develop
     types: [ opened, synchronize, reopened ]
     paths:
       - "**/*.go"
