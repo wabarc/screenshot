@@ -234,6 +234,7 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 		page.Enable(),
 		network.Enable(),
 		// enableLifeCycleEvents(),
+		stealth(),
 		setCookies(opts),
 		setLocalStorage(input, opts),
 		page.SetDownloadBehavior(page.SetDownloadBehaviorBehaviorDeny),
