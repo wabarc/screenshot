@@ -242,7 +242,7 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 		// chromedp.Navigate(url),
 		chromedp.WaitReady("body"),
 		chromedp.Sleep(time.Second),
-		evaluate(nil),
+		scrollToBottom(),
 		chromedp.Title(&title),
 		captureAction,
 		exportHTML,
@@ -275,22 +275,22 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 	return shot, nil
 }
 
-func evaluate(res interface{}) chromedp.EvaluateAction {
+// https://github.com/chromedp/chromedp/blob/875d6f4a3453149639d7fa83a2fa473b743fc33f/poll.go#L88-L127
+func scrollToBottom() chromedp.Action {
+	const script = `()=>{
+    let distance = 150;
+    let scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+    let currentHeight = window.innerHeight + window.pageYOffset;
+    window.scrollBy(0, distance);
+    if (currentHeight >= scrollHeight) {
+        return true;
+    }
+    return false;
+}`
+
 	// Scroll down to the bottom line by line
 	return chromedp.Tasks{
-		chromedp.EvaluateAsDevTools(`
-			var totalHeight = 0;
-			var distance = 85;
-			var timer = setInterval(() => {
-				var scrollHeight = document.body.scrollHeight;
-				window.scrollBy(0, distance);
-				totalHeight += distance;
-				if (totalHeight >= scrollHeight) {
-					clearInterval(timer);
-				}
-			}, 100)
-		`, res),
-		chromedp.Sleep(15 * time.Second),
+		chromedp.PollFunction(script, nil, chromedp.WithPollingInterval(150*time.Millisecond)),
 	}
 }
 
