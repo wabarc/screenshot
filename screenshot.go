@@ -18,6 +18,7 @@ import (
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
+	"github.com/chromedp/cdproto/performance"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
 	"github.com/pkg/errors"
@@ -161,6 +162,23 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 	var raw string
 	var title string
 
+	loadChan := make(chan *page.EventLoadEventFired, 5)
+	var metrics []*performance.Metric
+	go func() {
+		for range loadChan {
+			err = chromedp.Run(ctx, chromedp.ActionFunc(func(cxt context.Context) error {
+				metrics, err = performance.GetMetrics().Do(cxt)
+				for _, m := range metrics {
+					fmt.Println(m.Name, " = ", m.Value)
+				}
+				return err
+			}))
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+	}()
+
 	nRequests := &sync.Map{}
 	nResponses := &sync.Map{}
 	requestsID := []network.RequestID{}
@@ -225,6 +243,9 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 			// 	go func() {
 			// 		lf := v.(*network.EventLoadingFailed)
 			// 	}()
+		case *page.EventLoadEventFired:
+			fmt.Println("Load Event Fired")
+			loadChan <- v
 		}
 	})
 
@@ -234,6 +255,7 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 	if err := chromedp.Run(ctx, chromedp.Tasks{
 		page.Enable(),
 		network.Enable(),
+		performance.Enable(),
 		// enableLifeCycleEvents(),
 		stealth(),
 		setCookies(opts),
