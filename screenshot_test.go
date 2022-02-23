@@ -69,13 +69,13 @@ func TestScreenshot(t *testing.T) {
 		return
 	}
 
-	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
-		t.Fail()
+	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots{}) {
+		t.Fatalf("Unexpected type of Screenshots")
 	}
 
-	if shot.Title != "Example Domain" {
-		t.Log(shot.Title)
-		t.Fail()
+	wantTitle := "Example Domain"
+	if shot.Title != wantTitle {
+		t.Fatalf("Unexpected title of webpage, got %s instead of %s", shot.Title, wantTitle)
 	}
 
 	if shot.Image == nil {
@@ -127,13 +127,13 @@ func TestScreenshotWithRemote(t *testing.T) {
 		return
 	}
 
-	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
-		t.Fail()
+	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots{}) {
+		t.Fatalf("Unexpected type of Screenshots")
 	}
 
-	if shot.Title != "Example Domain" {
-		t.Log(shot.Title)
-		t.Fail()
+	wantTitle := "Example Domain"
+	if shot.Title != wantTitle {
+		t.Fatalf("Unexpected title of webpage, got %s instead of %s", shot.Title, wantTitle)
 	}
 
 	if shot.Image == nil {
@@ -161,8 +161,8 @@ func TestScreenshotFormat(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error(), http.StatusServiceUnavailable)
 	}
-	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
-		t.Fail()
+	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots{}) {
+		t.Fatalf("Unexpected type of Screenshots")
 	}
 	if shot.Title != "Example Domain" || shot.Image == nil {
 		t.Fatalf("screenshots empty, title: %s, data: %v", shot.Title, shot.Image)
@@ -176,8 +176,8 @@ func TestScreenshotFormat(t *testing.T) {
 	if err != nil {
 		t.Fatal(err.Error(), http.StatusServiceUnavailable)
 	}
-	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
-		t.Fail()
+	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots{}) {
+		t.Fatalf("Unexpected type of Screenshots")
 	}
 	if shot.Title != "Example Domain" || shot.Image == nil {
 		t.Fatalf("screenshots empty, title: %s, data: %v", shot.Title, shot.Image)
@@ -214,8 +214,8 @@ func TestScreenshotAsPDF(t *testing.T) {
 		return
 	}
 
-	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
-		t.Fail()
+	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots{}) {
+		t.Fatalf("Unexpected type of Screenshots")
 	}
 
 	if shot.Title != "Example Domain" {
@@ -257,13 +257,13 @@ func TestScreenshotAsHTML(t *testing.T) {
 		return
 	}
 
-	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
-		t.Fail()
+	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots{}) {
+		t.Fatalf("Unexpected type of Screenshots")
 	}
 
-	if shot.Title != "Example Domain" {
-		t.Log(shot.Title)
-		t.Fail()
+	wantTitle := "Example Domain"
+	if shot.Title != wantTitle {
+		t.Fatalf("Unexpected title of webpage, got %s instead of %s", shot.Title, wantTitle)
 	}
 
 	if shot.Image == nil {
@@ -300,13 +300,13 @@ func TestScreenshotAsHAR(t *testing.T) {
 		return
 	}
 
-	if reflect.TypeOf(shot) != reflect.TypeOf(Screenshots{}) {
-		t.Fail()
+	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots{}) {
+		t.Fatalf("Unexpected type of Screenshots")
 	}
 
-	if shot.Title != "Example Domain" {
-		t.Log(shot.Title)
-		t.Fail()
+	wantTitle := "Example Domain"
+	if shot.Title != wantTitle {
+		t.Fatalf("Unexpected title of webpage, got %s instead of %s", shot.Title, wantTitle)
 	}
 
 	if shot.HAR == nil {

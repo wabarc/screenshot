@@ -57,7 +57,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
-	var shot screenshot.Screenshots
+	var shot *screenshot.Screenshots
 	var opts = []screenshot.ScreenshotOption{
 		screenshot.ScaleFactor(1),
 		screenshot.PrintPDF(pdf), // print pdf
@@ -86,7 +86,7 @@ func main() {
 	wg.Wait()
 }
 
-func do(ctx context.Context, shot screenshot.Screenshots, opts []screenshot.ScreenshotOption, link string) {
+func do(ctx context.Context, shot *screenshot.Screenshots, opts []screenshot.ScreenshotOption, link string) {
 	input, err := url.Parse(link)
 	if err != nil {
 		fmt.Println(link, "=>", fmt.Sprintf("%v", err))

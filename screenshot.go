@@ -44,7 +44,7 @@ type Screenshots struct {
 
 // Screenshoter is a webpage screenshot interface.
 type Screenshoter interface {
-	Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (Screenshots, error)
+	Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (*Screenshots, error)
 }
 
 type chromeRemoteScreenshoter struct {
@@ -77,9 +77,9 @@ func NewChromeRemoteScreenshoter(addr string) (Screenshoter, error) {
 	}, nil
 }
 
-func (s *chromeRemoteScreenshoter) Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (shot Screenshots, err error) {
+func (s *chromeRemoteScreenshoter) Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (*Screenshots, error) {
 	if s.url == "" {
-		return shot, fmt.Errorf("can't connect to headless browser")
+		return nil, fmt.Errorf("can't connect to headless browser")
 	}
 
 	ctx, cancel := chromedp.NewRemoteAllocator(ctx, s.url)
@@ -88,9 +88,9 @@ func (s *chromeRemoteScreenshoter) Screenshot(ctx context.Context, input *url.UR
 	return screenshotStart(ctx, input, options...)
 }
 
-func Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (shot Screenshots, err error) {
+func Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (*Screenshots, error) {
 	if _, err := exec.LookPath(helper.FindChromeExecPath()); err != nil {
-		return shot, err
+		return nil, err
 	}
 
 	// https://github.com/chromedp/chromedp/blob/b56cd66f9cebd6a1fa1283847bbf507409d48225/allocate.go#L53
@@ -131,7 +131,7 @@ func Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption
 	return screenshotStart(ctx, input, options...)
 }
 
-func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotOption) (shot Screenshots, err error) {
+func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotOption) (*Screenshots, error) {
 	var browserOpts []chromedp.ContextOption
 	if debug := os.Getenv("CHROMEDP_DEBUG"); debug != "" && debug != "false" {
 		browserOpts = append(browserOpts, chromedp.WithDebugf(log.Printf))
@@ -189,6 +189,7 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 			wg.Add(1)
 			go func(r *network.EventResponseReceived) {
 				defer wg.Done()
+				var err error
 				var body []byte
 				var ids []cdp.NodeID
 				var cookies []*network.Cookie
@@ -264,7 +265,7 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 		html = helper.String2Byte(raw)
 	}
 	har, _ = compose(requestsID, nRequests, nResponses, opts, url)
-	shot = Screenshots{
+	shot := &Screenshots{
 		URL:   revertURI(url),
 		PDF:   pdf,
 		HAR:   har,
