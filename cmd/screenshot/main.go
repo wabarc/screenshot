@@ -57,7 +57,6 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeout)*time.Second)
 	defer cancel()
 
-	var shot *screenshot.Screenshots
 	var opts = []screenshot.ScreenshotOption{
 		screenshot.ScaleFactor(1),
 		screenshot.PrintPDF(pdf), // print pdf
@@ -79,19 +78,20 @@ func main() {
 	for k := range args {
 		wg.Add(1)
 		go func(link string) {
-			do(ctx, shot, opts, link)
+			do(ctx, opts, link)
 			wg.Done()
 		}(args[k])
 	}
 	wg.Wait()
 }
 
-func do(ctx context.Context, shot *screenshot.Screenshots, opts []screenshot.ScreenshotOption, link string) {
+func do(ctx context.Context, opts []screenshot.ScreenshotOption, link string) {
 	input, err := url.Parse(link)
 	if err != nil {
 		fmt.Println(link, "=>", fmt.Sprintf("%v", err))
 		return
 	}
+	var shot *screenshot.Screenshots
 	if remoteAddr != "" {
 		remote, er := screenshot.NewChromeRemoteScreenshoter(remoteAddr)
 		if er != nil {
