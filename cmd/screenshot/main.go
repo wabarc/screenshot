@@ -29,7 +29,7 @@ var (
 )
 
 func init() {
-	flag.Uint64Var(&timeout, "timeout", 60, "Screenshot timeout.")
+	flag.Uint64Var(&timeout, "timeout", 300, "Screenshot timeout.")
 	flag.StringVar(&format, "format", "png", "Screenshot file format.")
 	flag.StringVar(&remoteAddr, "remote-addr", "", "Headless browser remote address, such as 127.0.0.1:9222")
 	flag.StringVar(&config, "config", "", "Path to configuration file.")

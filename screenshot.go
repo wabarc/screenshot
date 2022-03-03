@@ -233,17 +233,15 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 	exportHTML := exportHTML(&raw, opts)
 	saveAsPDF := printPDF(&pdf, opts)
 	if err := chromedp.Run(ctx, chromedp.Tasks{
+		dom.Enable(),
 		page.Enable(),
 		network.Enable(),
-		// enableLifeCycleEvents(),
 		stealth(),
 		setCookies(opts),
 		setLocalStorage(input, opts),
 		page.SetDownloadBehavior(page.SetDownloadBehaviorBehaviorDeny),
-		navigateAndWaitFor(url, "DOMContentLoaded"),
-		// chromedp.Navigate(url),
-		chromedp.WaitReady("body"),
-		chromedp.Sleep(time.Second),
+		navigateAndWaitFor(url, "load"),
+		chromedp.Sleep(5 * time.Second),
 		scrollToBottom(),
 		chromedp.Title(&title),
 		captureAction,
@@ -281,8 +279,14 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 func scrollToBottom() chromedp.Action {
 	const script = `()=>{
     let distance = 150;
-    let scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
-    let currentHeight = window.innerHeight + window.pageYOffset;
+    let scrollHeight = 0;
+    let currentHeight = 0;
+
+    try {
+        scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
+        currentHeight = window.innerHeight + window.pageYOffset;
+    } catch (e) {}
+
     window.scrollBy(0, distance);
     if (currentHeight >= scrollHeight) {
         return true;
@@ -453,6 +457,9 @@ func navigateAndWaitFor(url string, eventName string) chromedp.ActionFunc {
 		if err != nil {
 			return err
 		}
+
+		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+		defer cancel()
 
 		return waitFor(ctx, eventName)
 	}
