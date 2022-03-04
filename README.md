@@ -35,6 +35,7 @@ From [releases](https://github.com/wabarc/screenshot/releases)
 - CHROMEDP_NO_SANDBOX
 - CHROMEDP_DISABLE_GPU
 - CHROMEDP_USER_AGENT
+- CHROMEDP_STEALTH
 
 ## Credits
 

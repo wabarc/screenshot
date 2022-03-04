@@ -6,6 +6,7 @@ package screenshot
 
 import (
 	"context"
+	"os"
 
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/chromedp"
@@ -18,12 +19,16 @@ const stealthScript = `;(() => {
 })();`
 
 func stealth() chromedp.Action {
-	return chromedp.Tasks{
-		chromedp.ActionFunc(func(ctx context.Context) error {
-			if _, err := page.AddScriptToEvaluateOnNewDocument(stealthScript).Do(ctx); err != nil {
-				return err
-			}
-			return nil
-		}),
+	enabled := os.Getenv("CHROMEDP_STEALTH")
+	if enabled == "true" || enabled == "yes" || enabled == "on" {
+		return chromedp.Tasks{
+			chromedp.ActionFunc(func(ctx context.Context) error {
+				if _, err := page.AddScriptToEvaluateOnNewDocument(stealthScript).Do(ctx); err != nil {
+					return err
+				}
+				return nil
+			}),
+		}
 	}
+	return chromedp.Tasks{}
 }
