@@ -242,6 +242,7 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 		page.SetDownloadBehavior(page.SetDownloadBehaviorBehaviorDeny),
 		navigateAndWaitFor(url, "load"),
 		chromedp.Sleep(5 * time.Second),
+		evaluate(input),
 		scrollToBottom(),
 		chromedp.Title(&title),
 		captureAction,
