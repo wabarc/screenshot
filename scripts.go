@@ -17,11 +17,17 @@ var scripts = map[domain]string{
 
 	"archiveofourown.org": `let tosAgree = document.querySelector('#tos_agree');
 if (tosAgree !== null) {
-    tosAgree.click();
+  tosAgree.click();
 }
 let tosAccept = document.querySelector('#accept_tos');
 if (tosAccept !== null) {
-    tosAccept.click();
+  tosAccept.click();
+}`,
+
+	// https://zhuanlan.zhihu.com/p/12345
+	"zhihu.com": `var loginPop = document.querySelector('div.Modal.Modal--default.signFlowModal > button');
+if (loginPop !== null) {
+  loginPop.click();
 }`,
 
 	"douban.com": `let noteMask = document.querySelector('.ui-overlay-mask');
