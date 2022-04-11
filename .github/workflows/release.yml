@@ -64,7 +64,7 @@ jobs:
       run: make TARGET=${{ steps.builder.outputs.args }} releases
 
     - name: Upload archived binary
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: ${{ env.PRODUCT }}
         path: build/package/${{ env.PRODUCT }}*
@@ -128,7 +128,7 @@ jobs:
         ' >> gittaglogs.txt
 
     - name: Upload artifact
-      uses: actions/upload-artifact@v2
+      uses: actions/upload-artifact@v3
       with:
         name: release-note
         path: release-note.md
