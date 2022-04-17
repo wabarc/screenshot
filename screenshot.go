@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/chromedp/cdproto/cdp"
@@ -40,6 +41,9 @@ type Screenshots struct {
 	HTML  []byte
 	PDF   []byte
 	HAR   []byte
+
+	// Total bytes of resources
+	DataLength int64
 }
 
 // Screenshoter is a webpage screenshot interface.
@@ -160,6 +164,7 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 	var har []byte
 	var raw string
 	var title string
+	var dataLength int64
 
 	nRequests := &sync.Map{}
 	nResponses := &sync.Map{}
@@ -213,10 +218,7 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 			}(v)
 		case *network.EventDataReceived:
 			// Fired when data chunk was received over the network.
-			// go func() {
-			// 	edr := v.(*network.EventDataReceived)
-			// 	fmt.Printf("%#v\n", edr)
-			// }()
+			atomic.AddInt64(&dataLength, v.DataLength)
 			// case *network.EventLoadingFinished:
 			// 	go func() {
 			// 		lf := v.(*network.EventLoadingFinished)
@@ -271,6 +273,8 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 		HTML:  html,
 		Image: buf,
 		Title: title,
+
+		DataLength: atomic.LoadInt64(&dataLength),
 	}
 
 	return shot, nil
