@@ -8,6 +8,7 @@ import (
 	"mime"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 )
@@ -42,4 +43,28 @@ func convertURI(u *url.URL) string {
 
 func revertURI(link string) string {
 	return strings.Replace(link, viewerEndpoint(), "", 1)
+}
+
+func proxyServer() string {
+	// https://www.chromium.org/developers/design-documents/network-stack/socks-proxy/
+	var server string
+	keys := []string{
+		"HTTP_PROXY",
+		"HTTPS_PROXY",
+		"ALL_PROXY",
+		"http_proxy",
+		"https_proxy",
+		"all_proxy",
+	}
+	for _, key := range keys {
+		if server = os.Getenv(key); server != "" {
+			if _, err := url.Parse(server); err != nil {
+				continue
+			} else {
+				break
+			}
+		}
+	}
+
+	return server
 }

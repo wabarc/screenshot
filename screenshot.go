@@ -110,6 +110,7 @@ func Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption
 		chromedp.Flag("disable-webgl", true),
 		chromedp.Flag("disable-gpu", true),
 		chromedp.Flag("no-first-run", true),
+		chromedp.Flag("proxy-server", proxyServer()),
 	)
 	f := "false"
 	if noHeadless := os.Getenv("CHROMEDP_NO_HEADLESS"); noHeadless != "" && noHeadless != f {
