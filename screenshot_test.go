@@ -370,6 +370,7 @@ func TestScreenshotWithCookies(t *testing.T) {
 		t.Skip("Chrome headless browser no found, skipped")
 	}
 
+	want := "matched cookie."
 	_, mux, server := helper.MockServer()
 	mux.HandleFunc("/", func(res http.ResponseWriter, req *http.Request) {
 		cookies := req.Cookies()
@@ -383,7 +384,7 @@ func TestScreenshotWithCookies(t *testing.T) {
 			return
 		}
 		if cookies[0].String() == "foo=bar" {
-			fmt.Fprintf(res, "ok")
+			fmt.Fprintf(res, want)
 		} else {
 			fmt.Fprintf(res, "")
 		}
@@ -428,9 +429,8 @@ func TestScreenshotWithCookies(t *testing.T) {
 		return
 	}
 
-	html := `<html><head></head><body><pre style="word-wrap: break-word; white-space: pre-wrap;">ok</pre></body></html>`
-	if exp, got := html, string(shot.HTML); exp != got {
-		t.Errorf("unexpected screenshot with cookie got %s instead of %s", got, exp)
+	if html := string(shot.HTML); !strings.Contains(html, want) {
+		t.Errorf("unexpected screenshot with cookie got %s instead of %s", html, want)
 	}
 }
 
