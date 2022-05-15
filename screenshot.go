@@ -244,7 +244,7 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 		setLocalStorage(input, opts),
 		page.SetDownloadBehavior(page.SetDownloadBehaviorBehaviorDeny),
 		navigateAndWaitFor(url, "load"),
-		chromedp.Sleep(5 * time.Second),
+		chromedp.Sleep(time.Second),
 		evaluate(input),
 		scrollToBottom(),
 		chromedp.Title(&title),
@@ -283,6 +283,12 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 
 // https://github.com/chromedp/chromedp/blob/875d6f4a3453149639d7fa83a2fa473b743fc33f/poll.go#L88-L127
 func scrollToBottom() chromedp.Action {
+	// This function script scrolls down 150px once. It returns a boolean for `chromedp.PollFunction`
+	// to determine whether to execute next if the current height is less than the total height.
+	// If an exception occurs, it will return true for termilate.
+	//
+	// Due to accuracy, the `currentHeight` may always be less than `the'scrollHeight`, add 1px
+	// `currentHeight` to ensure scrolled to bottom.
 	const script = `()=>{
     let distance = 150;
     let scrollHeight = 0;
@@ -290,8 +296,10 @@ func scrollToBottom() chromedp.Action {
 
     try {
         scrollHeight = document.documentElement.scrollHeight || document.body.scrollHeight;
-        currentHeight = window.innerHeight + window.pageYOffset;
-    } catch (e) {}
+        currentHeight = window.innerHeight + window.pageYOffset + 1;
+    } catch (e) {
+        return true;
+    }
 
     window.scrollBy(0, distance);
     if (currentHeight >= scrollHeight) {
@@ -300,7 +308,7 @@ func scrollToBottom() chromedp.Action {
     return false;
 }`
 
-	// Scroll down to the bottom line by line
+	// Scroll down to the bottom line by line, which is controlled by `chromedp.WithPollingInterval`.
 	return chromedp.Tasks{
 		chromedp.PollFunction(script, nil, chromedp.WithPollingInterval(150*time.Millisecond)),
 	}
