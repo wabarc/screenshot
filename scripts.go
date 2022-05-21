@@ -41,6 +41,10 @@ let noteReadMore = document.querySelector('#link-report .taboola-open');
 if (noteReadMore !== null) {
   noteReadMore.click();
 }`,
+	"jacobinmag.com": `let mailingPop = document.getElementById('mailing-list-popup');
+if (mailingPop !== null) {
+    mailingPop.remove();
+}`,
 }
 
 type domain string
