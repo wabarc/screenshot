@@ -310,7 +310,7 @@ func scrollToBottom() chromedp.Action {
 
 	// Scroll down to the bottom line by line, which is controlled by `chromedp.WithPollingInterval`.
 	return chromedp.Tasks{
-		chromedp.PollFunction(script, nil, chromedp.WithPollingInterval(150*time.Millisecond)),
+		chromedp.PollFunction(script, nil, chromedp.WithPollingTimeout(15*time.Second), chromedp.WithPollingInterval(150*time.Millisecond)),
 	}
 }
 
