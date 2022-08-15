@@ -481,10 +481,11 @@ func navigateAndWaitFor(url string, eventName string) chromedp.ActionFunc {
 
 // waitFor blocks until eventName is received.
 // Examples of events you can wait for:
-//     init, DOMContentLoaded, firstPaint,
-//     firstContentfulPaint, firstImagePaint,
-//     firstMeaningfulPaintCandidate,
-//     load, networkAlmostIdle, firstMeaningfulPaint, networkIdle
+//
+//	init, DOMContentLoaded, firstPaint,
+//	firstContentfulPaint, firstImagePaint,
+//	firstMeaningfulPaintCandidate,
+//	load, networkAlmostIdle, firstMeaningfulPaint, networkIdle
 //
 // This is not super reliable, I've already found incidental cases where
 // networkIdle was sent before load. It's probably smart to see how
@@ -623,14 +624,15 @@ type Cookie struct {
 // ImportCookies imports cookies by given byte with yaml configuration.
 // Format:
 // cookies:
-//   example.com:
-//     - name: 'foo'
-//       value: 'bar'
-//     - name: 'zoo'
-//       value: 'zoo'
-//   example.org:
-//     - name: 'foo'
-//       value: 'bar'
+//
+//	example.com:
+//	  - name: 'foo'
+//	    value: 'bar'
+//	  - name: 'zoo'
+//	    value: 'zoo'
+//	example.org:
+//	  - name: 'foo'
+//	    value: 'bar'
 func ImportCookies(r []byte) (cookies []Cookie, err error) {
 	type configs struct {
 		Cookies map[string][]Cookie `yaml:"cookies"`
