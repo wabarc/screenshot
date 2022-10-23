@@ -111,7 +111,7 @@ func do(ctx context.Context, opts []screenshot.ScreenshotOption, link string) {
 		return
 	}
 
-	if shot.URL == "" || shot.Image == nil {
+	if shot.URL == "" {
 		return
 	}
 	writeFile(shot.URL, shot.Image)
