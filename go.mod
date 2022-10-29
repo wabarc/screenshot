@@ -1,6 +1,6 @@
 module github.com/wabarc/screenshot
 
-go 1.13
+go 1.17
 
 require (
 	github.com/chromedp/cdproto v0.0.0-20220924210414-0e3390be1777
