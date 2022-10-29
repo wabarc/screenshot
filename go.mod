@@ -3,8 +3,8 @@ module github.com/wabarc/screenshot
 go 1.13
 
 require (
-	github.com/chromedp/cdproto v0.0.0-20220812200530-d0d83820bffc
-	github.com/chromedp/chromedp v0.8.4
+	github.com/chromedp/cdproto v0.0.0-20220924210414-0e3390be1777
+	github.com/chromedp/chromedp v0.8.6
 	github.com/gabriel-vasile/mimetype v1.4.1
 	github.com/mattn/go-isatty v0.0.13 // indirect
 	github.com/pkg/errors v0.9.1
