@@ -401,19 +401,19 @@ func TestScreenshotWithCookies(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	f := `cookies:
+	f := fmt.Sprintf(`cookies:
   localhost:
     - name: 'foo'
       value: 'bar'
-      domain: '127.0.0.1'
+      domain: '%s'
       path: '/'
-      expires: '2022-08-12T11:57:14.005Z'
+      expires: '%s'
       size: 32
       httpOnly: true
       secure: true
       sameSite: 'Lax'
       sameParty: false
-      priority: 'Medium'`
+      priority: 'Medium'`, input.Hostname(), time.Now().Add(time.Hour).Format(time.RFC3339))
 	cookies, err := ImportCookies([]byte(f))
 	if err != nil {
 		t.Fatal(err)
