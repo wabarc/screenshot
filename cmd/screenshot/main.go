@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/url"
 	"os"
 	"strings"
@@ -65,7 +64,7 @@ func main() {
 		screenshot.Quality(100),  // image quality
 	}
 	if config != "" {
-		if buf, err := ioutil.ReadFile(config); err == nil && err != io.EOF {
+		if buf, err := os.ReadFile(config); err == nil && err != io.EOF {
 			if configs, err := screenshot.ImportCookies(buf); err == nil {
 				opts = append(opts, screenshot.Cookies(configs))
 			}
@@ -91,16 +90,16 @@ func do(ctx context.Context, opts []screenshot.ScreenshotOption, link string) {
 		fmt.Println(link, "=>", fmt.Sprintf("%v", err))
 		return
 	}
-	var shot *screenshot.Screenshots
+	var shot *screenshot.Screenshots[[]byte]
 	if remoteAddr != "" {
-		remote, er := screenshot.NewChromeRemoteScreenshoter(remoteAddr)
+		remote, er := screenshot.NewChromeRemoteScreenshoter[[]byte](remoteAddr)
 		if er != nil {
 			fmt.Println(link, "=>", er.Error())
 			return
 		}
 		shot, err = remote.Screenshot(ctx, input, opts...)
 	} else {
-		shot, err = screenshot.Screenshot(ctx, input, opts...)
+		shot, err = screenshot.Screenshot[[]byte](ctx, input, opts...)
 	}
 	if err != nil {
 		if err == context.DeadlineExceeded {
@@ -131,7 +130,7 @@ func writeFile(uri string, data []byte) {
 	if strings.HasSuffix(filename, ".json") {
 		filename = strings.TrimSuffix(filename, "json") + "har"
 	}
-	if err := ioutil.WriteFile(filename, data, 0o600); err != nil {
+	if err := os.WriteFile(filename, data, 0o600); err != nil {
 		fmt.Println(uri, "=>", err)
 		return
 	}

@@ -34,54 +34,61 @@ func init() {
 	}
 }
 
-type Screenshots struct {
+const perm = 0o644
+
+type Type interface {
+	~[]byte | ~string
+}
+
+type Screenshots[T Type] struct {
 	URL   string
 	Title string
-	Image []byte
-	HTML  []byte
-	PDF   []byte
-	HAR   []byte
+	Image T
+	HTML  T
+	PDF   T
+	HAR   T
 
 	// Total bytes of resources
 	DataLength int64
 }
 
 // Screenshoter is a webpage screenshot interface.
-type Screenshoter interface {
-	Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (*Screenshots, error)
+type Screenshoter[T Type] interface {
+	Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (*Screenshots[T], error)
 }
 
-type chromeRemoteScreenshoter struct {
+type chromeRemoteScreenshoter[T Type] struct {
 	url string
 }
 
 // NewChromeRemoteScreenshoter creates a Screenshoter backed by Chrome DevTools Protocol.
 // The addr is the headless chrome websocket debugger endpoint, such as 127.0.0.1:9222.
-func NewChromeRemoteScreenshoter(addr string) (Screenshoter, error) {
+func NewChromeRemoteScreenshoter[T Type](addr string) (res Screenshoter[T], err error) {
 	// Due to issue#505 (https://github.com/chromedp/chromedp/issues/505),
 	// chrome restricts the host must be IP or localhost, we should rewrite the url.
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/json/version", addr), nil)
 	if err != nil {
-		return nil, err
+		return res, err
 	}
 	req.Host = "localhost"
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
-		return nil, err
+		return res, err
 	}
 	defer resp.Body.Close()
 
 	var result map[string]interface{}
 	if err = json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return nil, err
+		return res, err
 	}
 
-	return &chromeRemoteScreenshoter{
+	res = &chromeRemoteScreenshoter[T]{
 		url: strings.Replace(result["webSocketDebuggerUrl"].(string), "localhost", addr, 1),
-	}, nil
+	}
+	return res, nil
 }
 
-func (s *chromeRemoteScreenshoter) Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (*Screenshots, error) {
+func (s *chromeRemoteScreenshoter[T]) Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (*Screenshots[T], error) {
 	if s.url == "" {
 		return nil, fmt.Errorf("can't connect to headless browser")
 	}
@@ -89,10 +96,10 @@ func (s *chromeRemoteScreenshoter) Screenshot(ctx context.Context, input *url.UR
 	ctx, cancel := chromedp.NewRemoteAllocator(ctx, s.url)
 	defer cancel()
 
-	return screenshotStart(ctx, input, options...)
+	return screenshotStart[T](ctx, input, options...)
 }
 
-func Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (*Screenshots, error) {
+func Screenshot[T Type](ctx context.Context, input *url.URL, options ...ScreenshotOption) (*Screenshots[T], error) {
 	if _, err := exec.LookPath(helper.FindChromeExecPath()); err != nil {
 		return nil, err
 	}
@@ -133,10 +140,10 @@ func Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption
 	ctx, cancel := chromedp.NewExecAllocator(ctx, allocOpts...)
 	defer cancel()
 
-	return screenshotStart(ctx, input, options...)
+	return screenshotStart[T](ctx, input, options...)
 }
 
-func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotOption) (*Screenshots, error) {
+func screenshotStart[T Type](ctx context.Context, input *url.URL, options ...ScreenshotOption) (shot *Screenshots[T], err error) {
 	var browserOpts []chromedp.ContextOption
 	if debug := os.Getenv("CHROMEDP_DEBUG"); debug != "" && debug != "false" {
 		browserOpts = append(browserOpts, chromedp.WithDebugf(log.Printf))
@@ -160,10 +167,10 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 	// }
 
 	url := convertURI(input)
-	var buf []byte
-	var pdf []byte
-	var har []byte
-	var raw string
+	var buf T
+	var pdf T
+	var har T
+	var raw T
 	var title string
 	var dataLength int64
 
@@ -232,9 +239,9 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 		}
 	})
 
-	captureAction := screenshotAction(&buf, opts)
-	exportHTML := exportHTML(&raw, opts)
-	saveAsPDF := printPDF(&pdf, opts)
+	captureAction := screenshotAction[T](&buf, opts)
+	exportHTML := exportHTML[T](&raw, opts)
+	saveAsPDF := printPDF[T](&pdf, opts)
 	if err := chromedp.Run(ctx, chromedp.Tasks{
 		dom.Enable(),
 		page.Enable(),
@@ -255,23 +262,18 @@ func screenshotStart(ctx context.Context, input *url.URL, options ...ScreenshotO
 		chromedp.Sleep(time.Second),
 		closePageAction(),
 	}); err != nil {
-		log.Print(err)
-		buf = nil
+		return shot, err
 	}
 
 	// Wait for all the go routines to complete
 	wg.Wait()
 
-	var html []byte
-	if raw != "" {
-		html = helper.String2Byte(raw)
-	}
-	har, _ = compose(requestsID, nRequests, nResponses, opts, url)
-	shot := &Screenshots{
+	_ = compose[T](requestsID, nRequests, nResponses, opts, url, &har)
+	shot = &Screenshots[T]{
 		URL:   revertURI(url),
 		PDF:   pdf,
 		HAR:   har,
-		HTML:  html,
+		HTML:  raw,
 		Image: buf,
 		Title: title,
 
@@ -369,7 +371,7 @@ func setLocalStorage(u *url.URL, options ScreenshotOptions) chromedp.Action {
 }
 
 // Note: this will override the viewport emulation settings.
-func screenshotAction(res *[]byte, options ScreenshotOptions) chromedp.Action {
+func screenshotAction[T Type](res *T, options ScreenshotOptions) chromedp.Action {
 	return chromedp.Tasks{
 		chromedp.ActionFunc(func(ctx context.Context) (err error) {
 			// get layout metrics
@@ -389,7 +391,7 @@ func screenshotAction(res *[]byte, options ScreenshotOptions) chromedp.Action {
 				contentSize.Width = float64(options.MaxWidth)
 			}
 
-			*res, err = page.CaptureScreenshot().
+			buf, err := page.CaptureScreenshot().
 				WithCaptureBeyondViewport(true).
 				WithQuality(options.Quality).
 				WithFormat(options.Format).
@@ -404,26 +406,37 @@ func screenshotAction(res *[]byte, options ScreenshotOptions) chromedp.Action {
 			if err != nil {
 				return err
 			}
-			return nil
+			switch t := (interface{})(res).(type) {
+			case *[]byte:
+				*t = buf
+			case *string:
+				err = writeFile(options.Files.Image, buf, perm)
+			}
+			return err
 		}),
 	}
 }
 
-func printPDF(res *[]byte, options ScreenshotOptions) chromedp.Action {
+func printPDF[T Type](res *T, options ScreenshotOptions) chromedp.Action {
 	if !options.PrintPDF {
 		return chromedp.Tasks{}
 	}
 
 	return chromedp.Tasks{
 		chromedp.ActionFunc(func(ctx context.Context) error {
-			var err error
-			*res, _, err = page.PrintToPDF().WithLandscape(true).WithPrintBackground(true).Do(ctx)
+			buf, _, err := page.PrintToPDF().WithLandscape(true).WithPrintBackground(true).Do(ctx)
+			switch t := (interface{})(res).(type) {
+			case *[]byte:
+				*t = buf
+			case *string:
+				err = writeFile(options.Files.PDF, buf, perm)
+			}
 			return err
 		}),
 	}
 }
 
-func exportHTML(res *string, options ScreenshotOptions) chromedp.Action {
+func exportHTML[T Type](res *T, options ScreenshotOptions) chromedp.Action {
 	if !options.RawHTML {
 		return chromedp.Tasks{}
 	}
@@ -435,8 +448,17 @@ func exportHTML(res *string, options ScreenshotOptions) chromedp.Action {
 			if err != nil {
 				return err
 			}
-			*res, err = dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
-
+			raw, err := dom.GetOuterHTML().WithNodeID(node.NodeID).Do(ctx)
+			if err != nil {
+				return err
+			}
+			buf := helper.String2Byte(raw)
+			switch t := (interface{})(res).(type) {
+			case *[]byte:
+				*t = buf
+			case *string:
+				err = writeFile(options.Files.HTML, buf, perm)
+			}
 			return err
 		}),
 	}
@@ -528,6 +550,8 @@ type ScreenshotOptions struct {
 	RawHTML  bool
 	DumpHAR  bool
 
+	Files Files
+
 	Cookies []Cookie
 	Storage []LocalStorage
 }
@@ -603,6 +627,19 @@ func RawHTML(b bool) ScreenshotOption {
 func DumpHAR(b bool) ScreenshotOption {
 	return func(opts *ScreenshotOptions) {
 		opts.DumpHAR = b
+	}
+}
+
+type Files struct {
+	Image string
+	HTML  string
+	PDF   string
+	HAR   string
+}
+
+func AppendToFile(f Files) ScreenshotOption {
+	return func(opts *ScreenshotOptions) {
+		opts.Files = f
 	}
 }
 

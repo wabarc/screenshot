@@ -15,7 +15,6 @@ import (
 
 	"github.com/chromedp/cdproto/har"
 	"github.com/chromedp/cdproto/network"
-	"github.com/pkg/errors"
 )
 
 // copied from https://github.com/chromedp/chromedp/issues/42#issuecomment-500191682
@@ -186,9 +185,9 @@ func processResponse(r *network.EventResponseReceived, cookies []*network.Cookie
 	return &res
 }
 
-func compose(requestsID []network.RequestID, mRequests, mResponses *sync.Map, options ScreenshotOptions, uri string) (buf []byte, err error) {
+func compose[T Type](requestsID []network.RequestID, mRequests, mResponses *sync.Map, options ScreenshotOptions, uri string, res *T) (err error) {
 	if !options.DumpHAR {
-		return buf, err
+		return err
 	}
 
 	pageID := "page_1"
@@ -240,10 +239,16 @@ func compose(requestsID []network.RequestID, mRequests, mResponses *sync.Map, op
 		},
 	}
 
-	buf, e := json.MarshalIndent(har, "", "  ")
-	if e != nil {
-		return nil, errors.Wrap(err, e.Error())
+	buf, err := json.MarshalIndent(har, "", "  ")
+	if err != nil {
+		return err
 	}
 
-	return buf, err
+	switch t := (interface{})(res).(type) {
+	case *[]byte:
+		*t = buf
+	case *string:
+		err = writeFile(options.Files.HAR, buf, perm)
+	}
+	return err
 }

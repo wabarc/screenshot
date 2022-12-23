@@ -5,6 +5,7 @@
 package screenshot // import "github.com/wabarc/screenshot"
 
 import (
+	"fmt"
 	"mime"
 	"net/http"
 	"net/url"
@@ -67,4 +68,19 @@ func proxyServer() string {
 	}
 
 	return server
+}
+
+func writeFile(filename string, data []byte, mode os.FileMode) error {
+	if data == nil {
+		return fmt.Errorf("data empty")
+	}
+
+	// Replace json with har
+	if strings.HasSuffix(filename, ".json") {
+		filename = strings.TrimSuffix(filename, "json") + "har"
+	}
+	if err := os.WriteFile(filename, data, mode); err != nil {
+		return err
+	}
+	return nil
 }
