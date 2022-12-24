@@ -261,10 +261,10 @@ func screenshotStart[T As](ctx context.Context, input *url.URL, options ...Scree
 		setCookies(opts),
 		setLocalStorage(input, opts),
 		page.SetDownloadBehavior(page.SetDownloadBehaviorBehaviorDeny),
-		navigateAndWaitFor(url, "load"),
+		navigateAndWaitFor(url, "networkAlmostIdle"),
 		chromedp.Sleep(time.Second),
 		evaluate(input),
-		scrollToBottom(),
+		scrollToBottom(ctx),
 		chromedp.Title(&title),
 		captureAction,
 		exportHTML,
@@ -272,7 +272,7 @@ func screenshotStart[T As](ctx context.Context, input *url.URL, options ...Scree
 		chromedp.ResetViewport(),
 		chromedp.Sleep(time.Second),
 		closePageAction(),
-	}); err != nil {
+	}); err != nil && !errors.Is(err, chromedp.ErrPollingTimeout) {
 		return shot, err
 	}
 
@@ -295,7 +295,7 @@ func screenshotStart[T As](ctx context.Context, input *url.URL, options ...Scree
 }
 
 // https://github.com/chromedp/chromedp/blob/875d6f4a3453149639d7fa83a2fa473b743fc33f/poll.go#L88-L127
-func scrollToBottom() chromedp.Action {
+func scrollToBottom(ctx context.Context) chromedp.Action {
 	// This function script scrolls down 150px once. It returns a boolean for `chromedp.PollFunction`
 	// to determine whether to execute next if the current height is less than the total height.
 	// If an exception occurs, it will return true for termilate.
@@ -321,9 +321,19 @@ func scrollToBottom() chromedp.Action {
     return false;
 }`
 
+	timeout := 15 * time.Second
+	deadline, ok := ctx.Deadline()
+	if ok {
+		timeout = deadline.Sub(time.Now())
+		idle := 5 * time.Second
+		if timeout > idle {
+			timeout -= idle
+		}
+	}
+
 	// Scroll down to the bottom line by line, which is controlled by `chromedp.WithPollingInterval`.
 	return chromedp.Tasks{
-		chromedp.PollFunction(script, nil, chromedp.WithPollingTimeout(15*time.Second), chromedp.WithPollingInterval(150*time.Millisecond)),
+		chromedp.PollFunction(script, nil, chromedp.WithPollingTimeout(timeout), chromedp.WithPollingInterval(150*time.Millisecond)),
 	}
 }
 
@@ -514,8 +524,9 @@ func navigateAndWaitFor(url string, eventName string) chromedp.ActionFunc {
 			return err
 		}
 
-		ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
-		defer cancel()
+		// timeout := 30 * time.Second
+		// ctx, cancel := context.WithTimeout(ctx, timeout)
+		// defer cancel()
 
 		return waitFor(ctx, eventName)
 	}
