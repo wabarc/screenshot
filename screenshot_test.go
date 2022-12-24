@@ -61,7 +61,7 @@ func TestScreenshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	shot, err := Screenshot[[]byte](ctx, input, ScaleFactor(1))
+	shot, err := Screenshot[Byte](ctx, input, ScaleFactor(1))
 	if err != nil {
 		if err == context.DeadlineExceeded {
 			t.Error(err.Error(), http.StatusRequestTimeout)
@@ -71,7 +71,7 @@ func TestScreenshot(t *testing.T) {
 		return
 	}
 
-	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots[[]byte]{}) {
+	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots[Byte]{}) {
 		t.Fatalf("Unexpected type of Screenshots")
 	}
 
@@ -115,7 +115,7 @@ func TestScreenshotWithRemote(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	remote, err := NewChromeRemoteScreenshoter[[]byte]("127.0.0.1:9222")
+	remote, err := NewChromeRemoteScreenshoter[Byte]("127.0.0.1:9222")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestScreenshotWithRemote(t *testing.T) {
 		return
 	}
 
-	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots[[]byte]{}) {
+	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots[Byte]{}) {
 		t.Fatalf("Unexpected type of Screenshots")
 	}
 
@@ -159,11 +159,11 @@ func TestScreenshotFormat(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	shot, err := Screenshot[[]byte](ctx, input, Quality(100))
+	shot, err := Screenshot[Byte](ctx, input, Quality(100))
 	if err != nil {
 		t.Fatal(err.Error(), http.StatusServiceUnavailable)
 	}
-	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots[[]byte]{}) {
+	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots[Byte]{}) {
 		t.Fatalf("Unexpected type of Screenshots")
 	}
 	if shot.Title != "Example Domain" || shot.Image == nil {
@@ -174,11 +174,11 @@ func TestScreenshotFormat(t *testing.T) {
 		t.Fatalf("content type should be image/png, got: %s", contentType)
 	}
 
-	shot, err = Screenshot[[]byte](ctx, input, Format("jpg"))
+	shot, err = Screenshot[Byte](ctx, input, Format("jpg"))
 	if err != nil {
 		t.Fatal(err.Error(), http.StatusServiceUnavailable)
 	}
-	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots[[]byte]{}) {
+	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots[Byte]{}) {
 		t.Fatalf("Unexpected type of Screenshots")
 	}
 	if shot.Title != "Example Domain" || shot.Image == nil {
@@ -206,7 +206,7 @@ func TestScreenshotAsPDF(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	shot, err := Screenshot[[]byte](ctx, input, ScaleFactor(1), PrintPDF(true))
+	shot, err := Screenshot[Byte](ctx, input, ScaleFactor(1), PrintPDF(true))
 	if err != nil {
 		if err == context.DeadlineExceeded {
 			t.Error(err.Error(), http.StatusRequestTimeout)
@@ -216,7 +216,7 @@ func TestScreenshotAsPDF(t *testing.T) {
 		return
 	}
 
-	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots[[]byte]{}) {
+	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots[Byte]{}) {
 		t.Fatalf("Unexpected type of Screenshots")
 	}
 
@@ -249,7 +249,7 @@ func TestScreenshotAsHTML(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	shot, err := Screenshot[[]byte](ctx, input, ScaleFactor(1), RawHTML(true))
+	shot, err := Screenshot[Byte](ctx, input, ScaleFactor(1), RawHTML(true))
 	if err != nil {
 		if err == context.DeadlineExceeded {
 			t.Error(err.Error(), http.StatusRequestTimeout)
@@ -259,7 +259,7 @@ func TestScreenshotAsHTML(t *testing.T) {
 		return
 	}
 
-	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots[[]byte]{}) {
+	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots[Byte]{}) {
 		t.Fatalf("Unexpected type of Screenshots")
 	}
 
@@ -292,7 +292,7 @@ func TestScreenshotAsHAR(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	shot, err := Screenshot[[]byte](ctx, input, ScaleFactor(1), DumpHAR(true))
+	shot, err := Screenshot[Byte](ctx, input, ScaleFactor(1), DumpHAR(true))
 	if err != nil {
 		if err == context.DeadlineExceeded {
 			t.Error(err.Error(), http.StatusRequestTimeout)
@@ -302,7 +302,7 @@ func TestScreenshotAsHAR(t *testing.T) {
 		return
 	}
 
-	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots[[]byte]{}) {
+	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots[Byte]{}) {
 		t.Fatalf("Unexpected type of Screenshots")
 	}
 
@@ -348,7 +348,7 @@ func TestImportCookies(t *testing.T) {
   example.org:
     - name: 'foo'
       value: 'bar'`
-	cookies, err := ImportCookies([]byte(f))
+	cookies, err := ImportCookies(Byte(f))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -416,12 +416,12 @@ func TestScreenshotWithCookies(t *testing.T) {
       sameSite: 'Lax'
       sameParty: false
       priority: 'Medium'`, input.Hostname(), time.Now().Add(time.Hour).Format(time.RFC3339))
-	cookies, err := ImportCookies([]byte(f))
+	cookies, err := ImportCookies(Byte(f))
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	shot, err := Screenshot[[]byte](ctx, input, RawHTML(true), Cookies(cookies))
+	shot, err := Screenshot[Byte](ctx, input, RawHTML(true), Cookies(cookies))
 	if err != nil {
 		if err == context.DeadlineExceeded {
 			t.Error(err.Error(), http.StatusRequestTimeout)
@@ -444,7 +444,7 @@ func TestImportLocalStorage(t *testing.T) {
       host: 'example.com'
     - key: 'foo'
       value: 'bar'`
-	storage, err := ImportStorage([]byte(f))
+	storage, err := ImportStorage(Byte(f))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -491,7 +491,7 @@ func TestAppendToFile(t *testing.T) {
 		PDF:   path.Join(dirname, "pdf.pdf"),
 		HAR:   path.Join(dirname, "har.har"),
 	}
-	shot, err := Screenshot[string](ctx, input, AppendToFile(files), RawHTML(true), DumpHAR(true), PrintPDF(true))
+	shot, err := Screenshot[Path](ctx, input, AppendToFile(files), RawHTML(true), DumpHAR(true), PrintPDF(true))
 	if err != nil {
 		if err == context.DeadlineExceeded {
 			t.Error(err.Error(), http.StatusRequestTimeout)
@@ -501,7 +501,7 @@ func TestAppendToFile(t *testing.T) {
 		return
 	}
 
-	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots[string]{}) {
+	if reflect.TypeOf(shot) != reflect.TypeOf(&Screenshots[Path]{}) {
 		t.Fatalf("Unexpected type of Screenshots")
 	}
 

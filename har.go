@@ -185,7 +185,7 @@ func processResponse(r *network.EventResponseReceived, cookies []*network.Cookie
 	return &res
 }
 
-func compose[T Type](requestsID []network.RequestID, mRequests, mResponses *sync.Map, options ScreenshotOptions, uri string, res *T) (err error) {
+func compose[T Aim](requestsID []network.RequestID, mRequests, mResponses *sync.Map, options ScreenshotOptions, uri string, res *T) (err error) {
 	if !options.DumpHAR {
 		return err
 	}
@@ -245,9 +245,9 @@ func compose[T Type](requestsID []network.RequestID, mRequests, mResponses *sync
 	}
 
 	switch t := (interface{})(res).(type) {
-	case *[]byte:
+	case *Byte:
 		*t = buf
-	case *string:
+	case *Path:
 		err = writeFile(options.Files.HAR, buf, perm)
 	}
 	return err

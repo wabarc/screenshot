@@ -90,16 +90,16 @@ func do(ctx context.Context, opts []screenshot.ScreenshotOption, link string) {
 		fmt.Println(link, "=>", fmt.Sprintf("%v", err))
 		return
 	}
-	var shot *screenshot.Screenshots[[]byte]
+	var shot *screenshot.Screenshots[screenshot.Byte]
 	if remoteAddr != "" {
-		remote, er := screenshot.NewChromeRemoteScreenshoter[[]byte](remoteAddr)
+		remote, er := screenshot.NewChromeRemoteScreenshoter[screenshot.Byte](remoteAddr)
 		if er != nil {
 			fmt.Println(link, "=>", er.Error())
 			return
 		}
 		shot, err = remote.Screenshot(ctx, input, opts...)
 	} else {
-		shot, err = screenshot.Screenshot[[]byte](ctx, input, opts...)
+		shot, err = screenshot.Screenshot[screenshot.Byte](ctx, input, opts...)
 	}
 	if err != nil {
 		if err == context.DeadlineExceeded {
