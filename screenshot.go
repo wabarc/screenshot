@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
@@ -135,7 +134,7 @@ func Screenshot[T As](ctx context.Context, input *url.URL, options ...Screenshot
 	if userAgent := os.Getenv("CHROMEDP_USER_AGENT"); userAgent != "" {
 		allocOpts = append(allocOpts, chromedp.UserAgent(userAgent))
 	}
-	dir, err := ioutil.TempDir(os.TempDir(), "chromedp-runner-*")
+	dir, err := os.MkdirTemp(os.TempDir(), "chromedp-runner-*")
 	if err == nil && dir != "" {
 		defer os.RemoveAll(dir)
 		allocOpts = append(allocOpts, chromedp.UserDataDir(dir))
