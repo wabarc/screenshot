@@ -5,6 +5,7 @@
 package screenshot // import "github.com/wabarc/screenshot"
 
 import (
+	"bufio"
 	"fmt"
 	"mime"
 	"net/http"
@@ -72,15 +73,16 @@ func proxyServer() string {
 
 func writeFile(filename string, data []byte, mode os.FileMode) error {
 	if data == nil {
-		return fmt.Errorf("data empty")
+		return fmt.Errorf("no data write to: %s", filename)
 	}
 
-	// Replace json with har
-	if strings.HasSuffix(filename, ".json") {
-		filename = strings.TrimSuffix(filename, "json") + "har"
-	}
-	if err := os.WriteFile(filename, data, mode); err != nil {
+	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, perm)
+	if err != nil {
 		return err
 	}
-	return nil
+
+	writer := bufio.NewWriter(file)
+	writer.Write(data)
+
+	return writer.Flush()
 }

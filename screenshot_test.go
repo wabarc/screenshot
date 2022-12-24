@@ -486,7 +486,7 @@ func TestAppendToFile(t *testing.T) {
 	defer os.RemoveAll(dirname)
 
 	files := Files{
-		Image: path.Join(dirname, "image.png"),
+		Image: path.Join(dirname, "image.jpg"),
 		HTML:  path.Join(dirname, "html.html"),
 		PDF:   path.Join(dirname, "pdf.pdf"),
 		HAR:   path.Join(dirname, "har.har"),
