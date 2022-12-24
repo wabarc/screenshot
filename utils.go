@@ -71,12 +71,12 @@ func proxyServer() string {
 	return server
 }
 
-func writeFile(filename string, data []byte, mode os.FileMode) error {
+func writeFile(path string, data []byte, mode os.FileMode) error {
 	if data == nil {
-		return fmt.Errorf("no data write to: %s", filename)
+		return fmt.Errorf("no data write to: %s", path)
 	}
 
-	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, mode)
+	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, mode)
 	if err != nil {
 		return err
 	}
