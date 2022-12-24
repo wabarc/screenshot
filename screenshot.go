@@ -39,11 +39,11 @@ const perm = 0o644
 type Byte []byte
 type Path string
 
-type Aim interface {
+type As interface {
 	Byte | Path
 }
 
-type Screenshots[T Aim] struct {
+type Screenshots[T As] struct {
 	URL   string
 	Title string
 	Image T
@@ -56,17 +56,17 @@ type Screenshots[T Aim] struct {
 }
 
 // Screenshoter is a webpage screenshot interface.
-type Screenshoter[T Aim] interface {
+type Screenshoter[T As] interface {
 	Screenshot(ctx context.Context, input *url.URL, options ...ScreenshotOption) (*Screenshots[T], error)
 }
 
-type chromeRemoteScreenshoter[T Aim] struct {
+type chromeRemoteScreenshoter[T As] struct {
 	url string
 }
 
 // NewChromeRemoteScreenshoter creates a Screenshoter backed by Chrome DevTools Protocol.
 // The addr is the headless chrome websocket debugger endpoint, such as 127.0.0.1:9222.
-func NewChromeRemoteScreenshoter[T Aim](addr string) (res Screenshoter[T], err error) {
+func NewChromeRemoteScreenshoter[T As](addr string) (res Screenshoter[T], err error) {
 	// Due to issue#505 (https://github.com/chromedp/chromedp/issues/505),
 	// chrome restricts the host must be IP or localhost, we should rewrite the url.
 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/json/version", addr), nil)
@@ -102,7 +102,7 @@ func (s *chromeRemoteScreenshoter[T]) Screenshot(ctx context.Context, input *url
 	return screenshotStart[T](ctx, input, options...)
 }
 
-func Screenshot[T Aim](ctx context.Context, input *url.URL, options ...ScreenshotOption) (*Screenshots[T], error) {
+func Screenshot[T As](ctx context.Context, input *url.URL, options ...ScreenshotOption) (*Screenshots[T], error) {
 	if _, err := exec.LookPath(helper.FindChromeExecPath()); err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func Screenshot[T Aim](ctx context.Context, input *url.URL, options ...Screensho
 	return screenshotStart[T](ctx, input, options...)
 }
 
-func screenshotStart[T Aim](ctx context.Context, input *url.URL, options ...ScreenshotOption) (shot *Screenshots[T], err error) {
+func screenshotStart[T As](ctx context.Context, input *url.URL, options ...ScreenshotOption) (shot *Screenshots[T], err error) {
 	var browserOpts []chromedp.ContextOption
 	if debug := os.Getenv("CHROMEDP_DEBUG"); debug != "" && debug != "false" {
 		browserOpts = append(browserOpts, chromedp.WithDebugf(log.Printf))
@@ -374,7 +374,7 @@ func setLocalStorage(u *url.URL, options ScreenshotOptions) chromedp.Action {
 }
 
 // Note: this will override the viewport emulation settings.
-func screenshotAction[T Aim](res *T, options ScreenshotOptions) chromedp.Action {
+func screenshotAction[T As](res *T, options ScreenshotOptions) chromedp.Action {
 	return chromedp.Tasks{
 		chromedp.ActionFunc(func(ctx context.Context) (err error) {
 			// get layout metrics
@@ -420,7 +420,7 @@ func screenshotAction[T Aim](res *T, options ScreenshotOptions) chromedp.Action 
 	}
 }
 
-func printPDF[T Aim](res *T, options ScreenshotOptions) chromedp.Action {
+func printPDF[T As](res *T, options ScreenshotOptions) chromedp.Action {
 	if !options.PrintPDF {
 		return chromedp.Tasks{}
 	}
@@ -439,7 +439,7 @@ func printPDF[T Aim](res *T, options ScreenshotOptions) chromedp.Action {
 	}
 }
 
-func exportHTML[T Aim](res *T, options ScreenshotOptions) chromedp.Action {
+func exportHTML[T As](res *T, options ScreenshotOptions) chromedp.Action {
 	if !options.RawHTML {
 		return chromedp.Tasks{}
 	}

@@ -185,7 +185,7 @@ func processResponse(r *network.EventResponseReceived, cookies []*network.Cookie
 	return &res
 }
 
-func compose[T Aim](requestsID []network.RequestID, mRequests, mResponses *sync.Map, options ScreenshotOptions, uri string, res *T) (err error) {
+func compose[T As](requestsID []network.RequestID, mRequests, mResponses *sync.Map, options ScreenshotOptions, uri string, res *T) (err error) {
 	if !options.DumpHAR {
 		return err
 	}
