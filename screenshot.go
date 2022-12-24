@@ -40,6 +40,15 @@ type Path string
 
 type As interface {
 	Byte | Path
+	String() string
+}
+
+func (b Byte) String() string {
+	return helper.Byte2String(b)
+}
+
+func (p Path) String() string {
+	return string(p)
 }
 
 type Screenshots[T As] struct {
@@ -169,7 +178,7 @@ func screenshotStart[T As](ctx context.Context, input *url.URL, options ...Scree
 	// }
 
 	url := convertURI(input)
-	var buf T
+	var img T
 	var pdf T
 	var har T
 	var raw T
@@ -241,7 +250,7 @@ func screenshotStart[T As](ctx context.Context, input *url.URL, options ...Scree
 		}
 	})
 
-	captureAction := screenshotAction[T](&buf, opts)
+	captureAction := screenshotAction[T](&img, opts)
 	exportHTML := exportHTML[T](&raw, opts)
 	saveAsPDF := printPDF[T](&pdf, opts)
 	if err := chromedp.Run(ctx, chromedp.Tasks{
@@ -276,7 +285,7 @@ func screenshotStart[T As](ctx context.Context, input *url.URL, options ...Scree
 		PDF:   pdf,
 		HAR:   har,
 		HTML:  raw,
-		Image: buf,
+		Image: img,
 		Title: title,
 
 		DataLength: atomic.LoadInt64(&dataLength),
@@ -413,6 +422,9 @@ func screenshotAction[T As](res *T, options ScreenshotOptions) chromedp.Action {
 				*t = buf
 			case *Path:
 				err = writeFile(options.Files.Image, buf, perm)
+				if err == nil {
+					*t = Path(options.Files.Image)
+				}
 			}
 			return err
 		}),
@@ -432,6 +444,9 @@ func printPDF[T As](res *T, options ScreenshotOptions) chromedp.Action {
 				*t = buf
 			case *Path:
 				err = writeFile(options.Files.PDF, buf, perm)
+				if err == nil {
+					*t = Path(options.Files.PDF)
+				}
 			}
 			return err
 		}),
@@ -460,6 +475,9 @@ func exportHTML[T As](res *T, options ScreenshotOptions) chromedp.Action {
 				*t = buf
 			case *Path:
 				err = writeFile(options.Files.HTML, buf, perm)
+				if err == nil {
+					*t = Path(options.Files.HTML)
+				}
 			}
 			return err
 		}),

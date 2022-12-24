@@ -249,6 +249,9 @@ func compose[T As](requestsID []network.RequestID, mRequests, mResponses *sync.M
 		*t = buf
 	case *Path:
 		err = writeFile(options.Files.HAR, buf, perm)
+		if err == nil {
+			*t = Path(options.Files.HAR)
+		}
 	}
 	return err
 }

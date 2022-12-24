@@ -510,16 +510,16 @@ func TestAppendToFile(t *testing.T) {
 		t.Fatalf("Unexpected title of webpage, got %s instead of %s", shot.Title, wantTitle)
 	}
 
-	if !helper.Exists(files.Image) {
+	if !helper.Exists(shot.Image.String()) {
 		t.Error("Unexpected append image to file")
 	}
-	if !helper.Exists(files.HTML) {
+	if !helper.Exists(shot.HTML.String()) {
 		t.Error("Unexpected append html to file")
 	}
-	if !helper.Exists(files.PDF) {
+	if !helper.Exists(shot.PDF.String()) {
 		t.Error("Unexpected append pdf to file")
 	}
-	if !helper.Exists(files.HAR) {
+	if !helper.Exists(shot.HAR.String()) {
 		t.Error("Unexpected append har to file")
 	}
 }
