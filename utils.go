@@ -80,6 +80,7 @@ func writeFile(filename string, data []byte, mode os.FileMode) error {
 	if err != nil {
 		return err
 	}
+	defer file.Close()
 
 	writer := bufio.NewWriter(file)
 	writer.Write(data)
