@@ -76,7 +76,7 @@ func writeFile(filename string, data []byte, mode os.FileMode) error {
 		return fmt.Errorf("no data write to: %s", filename)
 	}
 
-	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, perm)
+	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE, mode)
 	if err != nil {
 		return err
 	}
