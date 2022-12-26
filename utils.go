@@ -5,8 +5,6 @@
 package screenshot // import "github.com/wabarc/screenshot"
 
 import (
-	"bufio"
-	"fmt"
 	"mime"
 	"net/http"
 	"net/url"
@@ -69,21 +67,4 @@ func proxyServer() string {
 	}
 
 	return server
-}
-
-func writeFile(path string, data []byte, mode os.FileMode) error {
-	if data == nil {
-		return fmt.Errorf("no data write to: %s", path)
-	}
-
-	file, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE, mode)
-	if err != nil {
-		return err
-	}
-	defer file.Close()
-
-	writer := bufio.NewWriter(file)
-	writer.Write(data)
-
-	return writer.Flush()
 }

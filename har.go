@@ -15,6 +15,7 @@ import (
 
 	"github.com/chromedp/cdproto/har"
 	"github.com/chromedp/cdproto/network"
+	"github.com/wabarc/helper"
 )
 
 // copied from https://github.com/chromedp/chromedp/issues/42#issuecomment-500191682
@@ -248,7 +249,7 @@ func compose[T As](requestsID []network.RequestID, mRequests, mResponses *sync.M
 	case *Byte:
 		*t = buf
 	case *Path:
-		err = writeFile(options.Files.HAR, buf, perm)
+		err = helper.WriteFile(options.Files.HAR, buf, perm)
 		if err == nil {
 			*t = Path(options.Files.HAR)
 		}

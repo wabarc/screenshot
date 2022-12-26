@@ -431,7 +431,7 @@ func screenshotAction[T As](res *T, options ScreenshotOptions) chromedp.Action {
 			case *Byte:
 				*t = buf
 			case *Path:
-				err = writeFile(options.Files.Image, buf, perm)
+				err = helper.WriteFile(options.Files.Image, buf, perm)
 				if err == nil {
 					*t = Path(options.Files.Image)
 				}
@@ -453,7 +453,7 @@ func printPDF[T As](res *T, options ScreenshotOptions) chromedp.Action {
 			case *Byte:
 				*t = buf
 			case *Path:
-				err = writeFile(options.Files.PDF, buf, perm)
+				err = helper.WriteFile(options.Files.PDF, buf, perm)
 				if err == nil {
 					*t = Path(options.Files.PDF)
 				}
@@ -484,7 +484,7 @@ func exportHTML[T As](res *T, options ScreenshotOptions) chromedp.Action {
 			case *Byte:
 				*t = buf
 			case *Path:
-				err = writeFile(options.Files.HTML, buf, perm)
+				err = helper.WriteFile(options.Files.HTML, buf, perm)
 				if err == nil {
 					*t = Path(options.Files.HTML)
 				}
