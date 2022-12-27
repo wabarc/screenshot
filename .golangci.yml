@@ -32,7 +32,6 @@ linters:
     - gocritic
     - bodyclose
     - misspell
-    - rowserrcheck
     - stylecheck
     - typecheck
     - unused
