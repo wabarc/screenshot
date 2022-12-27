@@ -26,6 +26,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
+const defaultUA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36"
+
 func init() {
 	debug := os.Getenv("DEBUG")
 	if debug == "true" || debug == "1" || debug == "on" {
@@ -142,6 +144,8 @@ func Screenshot[T As](ctx context.Context, input *url.URL, options ...Screenshot
 	}
 	if userAgent := os.Getenv("CHROMEDP_USER_AGENT"); userAgent != "" {
 		allocOpts = append(allocOpts, chromedp.UserAgent(userAgent))
+	} else {
+		allocOpts = append(allocOpts, chromedp.UserAgent(defaultUA))
 	}
 	dir, err := os.MkdirTemp(os.TempDir(), "chromedp-runner-*")
 	if err == nil && dir != "" {
