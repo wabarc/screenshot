@@ -129,6 +129,8 @@ jobs:
       if: startsWith(github.ref, 'refs/tags/')
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # This token is provided by Actions, you do not need to create your own token
+      permissions:
+        contents: write
       with:
         body_path: gittaglogs.txt
         files: ${{ env.PRODUCT }}/*${{ env.PRODUCT }}*
