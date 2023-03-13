@@ -3,8 +3,8 @@ module github.com/wabarc/screenshot
 go 1.18
 
 require (
-	github.com/chromedp/cdproto v0.0.0-20221126224343-3a0787b8dd28
-	github.com/chromedp/chromedp v0.8.6
+	github.com/chromedp/cdproto v0.0.0-20230220211738-2b1ec77315c9
+	github.com/chromedp/chromedp v0.9.1
 	github.com/gabriel-vasile/mimetype v1.4.1
 	github.com/pkg/errors v0.9.1
 	github.com/wabarc/helper v0.0.0-20221226125347-ca560e106056
@@ -25,7 +25,7 @@ require (
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.16 // indirect
-	golang.org/x/sys v0.3.0 // indirect
+	golang.org/x/sys v0.6.0 // indirect
 	golang.org/x/text v0.5.0 // indirect
 	mvdan.cc/xurls/v2 v2.4.0 // indirect
 )
