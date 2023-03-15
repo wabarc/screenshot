@@ -14,11 +14,13 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/chromedp/cdproto/browser"
 	"github.com/chromedp/cdproto/cdp"
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/network"
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/cdproto/runtime"
+	"github.com/chromedp/cdproto/storage"
 	"github.com/chromedp/chromedp"
 	"github.com/pkg/errors"
 	"github.com/wabarc/helper"
@@ -71,33 +73,44 @@ type Screenshoter[T As] interface {
 }
 
 type chromeRemoteScreenshoter[T As] struct {
+	opts []chromedp.RemoteAllocatorOption
+
 	url string
 }
 
 // NewChromeRemoteScreenshoter creates a Screenshoter backed by Chrome DevTools Protocol.
 // The addr is the headless chrome websocket debugger endpoint, such as 127.0.0.1:9222.
 func NewChromeRemoteScreenshoter[T As](addr string) (res Screenshoter[T], err error) {
-	// Due to issue#505 (https://github.com/chromedp/chromedp/issues/505),
-	// chrome restricts the host must be IP or localhost, we should rewrite the url.
-	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/json/version", addr), nil)
-	if err != nil {
-		return res, err
-	}
-	req.Host = "localhost"
-	resp, err := http.DefaultClient.Do(req)
-	if err != nil {
-		return res, err
-	}
-	defer resp.Body.Close()
+	if strings.HasPrefix(addr, "wss://") || strings.HasPrefix(addr, "ws://") {
+		// added https://github.com/chromedp/chromedp/pull/1184
+		res = &chromeRemoteScreenshoter[T]{
+			opts: []chromedp.RemoteAllocatorOption{chromedp.NoModifyURL},
+			url:  addr,
+		}
+	} else {
+		// Due to issue#505 (https://github.com/chromedp/chromedp/issues/505),
+		// chrome restricts the host must be IP or localhost, we should rewrite the url.
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://%s/json/version", addr), nil)
+		if err != nil {
+			return res, err
+		}
+		req.Host = "localhost"
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			return res, err
+		}
+		defer resp.Body.Close()
 
-	var result map[string]interface{}
-	if err = json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return res, err
+		var result map[string]interface{}
+		if err = json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			return res, err
+		}
+
+		res = &chromeRemoteScreenshoter[T]{
+			url: strings.Replace(result["webSocketDebuggerUrl"].(string), "localhost", addr, 1),
+		}
 	}
 
-	res = &chromeRemoteScreenshoter[T]{
-		url: strings.Replace(result["webSocketDebuggerUrl"].(string), "localhost", addr, 1),
-	}
 	return res, nil
 }
 
@@ -106,7 +119,7 @@ func (s *chromeRemoteScreenshoter[T]) Screenshot(ctx context.Context, input *url
 		return nil, fmt.Errorf("can't connect to headless browser")
 	}
 
-	ctx, cancel := chromedp.NewRemoteAllocator(ctx, s.url)
+	ctx, cancel := chromedp.NewRemoteAllocator(ctx, s.url, s.opts...)
 	defer cancel()
 
 	return screenshotStart[T](ctx, input, options...)
@@ -231,7 +244,7 @@ func screenshotStart[T As](ctx context.Context, input *url.URL, options ...Scree
 						return err
 					}),
 					chromedp.ActionFunc(func(ctx context.Context) error {
-						cookies, err = network.GetAllCookies().Do(ctx)
+						cookies, err = storage.GetCookies().Do(ctx)
 						return err
 					}),
 				)
@@ -264,7 +277,7 @@ func screenshotStart[T As](ctx context.Context, input *url.URL, options ...Scree
 		stealth(),
 		setCookies(opts),
 		setLocalStorage(input, opts),
-		page.SetDownloadBehavior(page.SetDownloadBehaviorBehaviorDeny),
+		browser.SetDownloadBehavior(browser.SetDownloadBehaviorBehaviorDeny),
 		navigateAndWaitFor(url, "networkAlmostIdle"),
 		chromedp.Sleep(time.Second),
 		evaluate(input),
