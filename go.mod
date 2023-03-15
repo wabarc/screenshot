@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/chromedp/cdproto v0.0.0-20230310204135-a6d692f2c96d
 	github.com/chromedp/chromedp v0.9.1
-	github.com/gabriel-vasile/mimetype v1.4.1
+	github.com/gabriel-vasile/mimetype v1.4.2
 	github.com/pkg/errors v0.9.1
 	github.com/wabarc/helper v0.0.0-20230209075818-96584f1ebf9d
 	github.com/wabarc/logger v0.0.0-20210730133522-86bd3f31e792
