@@ -53,7 +53,7 @@ type entry struct {
 	Comment         string      `json:"comment,omitempty"`
 }
 
-type browser struct {
+type meta struct {
 	Name    string
 	Version string
 	Comment string
@@ -62,7 +62,7 @@ type browser struct {
 type hlog struct {
 	Version string  `json:"version"`
 	Creator creator `json:"creator"`
-	Browser browser `json:"browser,omitempty"`
+	Browser meta    `json:"browser,omitempty"`
 	Pages   []hpage `json:"pages,omitempty"`
 	Entries []entry `json:"entries"`
 	Comment string  `json:"comment,omitempty"`
