@@ -7,9 +7,9 @@ require (
 	github.com/chromedp/chromedp v0.9.1
 	github.com/gabriel-vasile/mimetype v1.4.1
 	github.com/pkg/errors v0.9.1
-	github.com/wabarc/helper v0.0.0-20230209075818-96584f1ebf9d
+	github.com/wabarc/helper v0.0.0-20230418130954-be7440352bcb
 	github.com/wabarc/logger v0.0.0-20210730133522-86bd3f31e792
-	golang.org/x/net v0.8.0
+	golang.org/x/net v0.9.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -24,8 +24,8 @@ require (
 	github.com/kennygrant/sanitize v1.2.4 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/mattn/go-isatty v0.0.17 // indirect
-	golang.org/x/sys v0.6.0 // indirect
-	golang.org/x/text v0.8.0 // indirect
+	github.com/mattn/go-isatty v0.0.18 // indirect
+	golang.org/x/sys v0.7.0 // indirect
+	golang.org/x/text v0.9.0 // indirect
 	mvdan.cc/xurls/v2 v2.4.0 // indirect
 )
