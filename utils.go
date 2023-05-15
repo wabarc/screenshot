@@ -49,6 +49,7 @@ func proxyServer() string {
 	// https://www.chromium.org/developers/design-documents/network-stack/socks-proxy/
 	var server string
 	keys := []string{
+		"PROXY_SERVER",
 		"HTTP_PROXY",
 		"HTTPS_PROXY",
 		"ALL_PROXY",
