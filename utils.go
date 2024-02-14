@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -68,4 +69,19 @@ func proxyServer() string {
 	}
 
 	return server
+}
+
+func wsURLReadTimeout() time.Duration {
+	timeout := os.Getenv("CHROMEDP_WSURLREADTIMEOUT")
+	defaultTimeout := 20 * time.Second
+	if timeout == "" {
+		return defaultTimeout
+	}
+
+	i, err := strconv.Atoi(timeout)
+	if err != nil {
+		return defaultTimeout
+	}
+
+	return time.Duration(i) * time.Second
 }

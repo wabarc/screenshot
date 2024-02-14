@@ -134,6 +134,7 @@ func Screenshot[T As](ctx context.Context, input *url.URL, options ...Screenshot
 	var allocOpts = append(
 		chromedp.DefaultExecAllocatorOptions[:],
 		// chromedp.CombinedOutput(log.Writer()),
+		chromedp.WSURLReadTimeout(wsURLReadTimeout()),
 		chromedp.NoDefaultBrowserCheck,
 		chromedp.Flag("ignore-certificate-errors", true),
 		chromedp.Flag("allow-running-insecure-content", true),

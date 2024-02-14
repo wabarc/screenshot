@@ -97,14 +97,14 @@ func TestScreenshotWithRemote(t *testing.T) {
 	ts := newServer()
 	defer ts.Close()
 
-	cmd := exec.Command(binPath, "--headless", "--disable-gpu", "--no-sandbox", "--remote-debugging-port=9222")
+	cmd := exec.Command(binPath, "--headless", "--disable-gpu", "--no-sandbox", "--remote-debugging-address=0.0.0.0", "--remote-debugging-port=9222")
 	if err := cmd.Start(); err != nil {
 		t.Fatalf("Start Chromium headless failed: %v", err)
 	}
 	go func() {
 		cmd.Wait() // nolint:errcheck
 	}()
-	time.Sleep(3 * time.Second)
+	time.Sleep(7 * time.Second)
 	defer func() {
 		if err := cmd.Process.Kill(); err != nil {
 			t.Errorf("Failed to kill process: %v", err)
