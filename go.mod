@@ -11,6 +11,7 @@ require (
 	github.com/wabarc/logger v0.0.0-20210730133522-86bd3f31e792
 	golang.org/x/net v0.21.0
 	gopkg.in/yaml.v2 v2.4.0
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
