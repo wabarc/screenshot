@@ -32,7 +32,6 @@ linters:
     - gocritic
     - bodyclose
     - misspell
-    - rowserrcheck
     - stylecheck
     - typecheck
     - unused
@@ -64,7 +63,7 @@ linters-settings:
     ignore-words:
       - someword
   stylecheck:
-    go: "1.16"
+    go: "1.18"
     # https://staticcheck.io/docs/options#checks
     checks: [ "all", "-ST1003", "-ST1008", "-ST1016" ]
     # https://staticcheck.io/docs/options#initialisms
