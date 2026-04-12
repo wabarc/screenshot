@@ -19,11 +19,11 @@ IMAGE := wabarc/golang-chromium:dev
 NAME := ${PROJECT}
 
 PLATFORM_LIST = \
-	darwin-amd64 \
-	darwin-arm64 \
-	linux-386 \
 	linux-amd64 \
-	linux-arm64
+	linux-arm64 \
+	linux-386 \
+	darwin-amd64 \
+	darwin-arm64
 
 WINDOWS_ARCH_LIST = \
 	windows-386 \
@@ -46,20 +46,20 @@ WINDOWS_ARCH_LIST = \
 	fmt \
 	vet
 
-darwin-amd64:
-	GOARCH=amd64 GOOS=darwin $(GOBUILD) -o $(BINDIR)/$(NAME)-$@ $(GOFILES)
-
-darwin-arm64:
-	GOARCH=arm64 GOOS=darwin $(GOBUILD) -o $(BINDIR)/$(NAME)-$@ $(GOFILES)
-
-linux-386:
-	GOARCH=386 GOOS=linux $(GOBUILD) -o $(BINDIR)/$(NAME)-$@ $(GOFILES)
-
 linux-amd64:
 	GOARCH=amd64 GOOS=linux $(GOBUILD) -o $(BINDIR)/$(NAME)-$@ $(GOFILES)
 
 linux-arm64:
 	GOARCH=arm64 GOOS=linux $(GOBUILD) -o $(BINDIR)/$(NAME)-$@ $(GOFILES)
+
+linux-386:
+	GOARCH=386 GOOS=linux $(GOBUILD) -o $(BINDIR)/$(NAME)-$@ $(GOFILES)
+
+darwin-amd64:
+	GOARCH=amd64 GOOS=darwin $(GOBUILD) -o $(BINDIR)/$(NAME)-$@ $(GOFILES)
+
+darwin-arm64:
+	GOARCH=arm64 GOOS=darwin $(GOBUILD) -o $(BINDIR)/$(NAME)-$@ $(GOFILES)
 
 windows-386:
 	GOARCH=386 GOOS=windows $(GOBUILD) -o $(BINDIR)/$(NAME)-$@.exe $(GOFILES)
