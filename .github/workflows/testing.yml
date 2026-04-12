@@ -65,5 +65,6 @@ jobs:
     - name: Run test
       env:
         CGO_ENABLED: 1
+        CHROMEDP_NO_SANDBOX: 1
       run: |
         go test -v -race -cover -covermode=atomic ./...
