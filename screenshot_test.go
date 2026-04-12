@@ -386,7 +386,7 @@ func TestScreenshotWithCookies(t *testing.T) {
 			return
 		}
 		if cookies[0].String() == "foo=bar" {
-			fmt.Fprintf(res, want)
+			fmt.Fprintf(res, "%s", want)
 		} else {
 			fmt.Fprintf(res, "")
 		}

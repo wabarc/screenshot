@@ -371,7 +371,6 @@ func setCookies(options ScreenshotOptions) chromedp.Action {
 					WithExpires(&expire).
 					WithHTTPOnly(cookie.HTTPOnly).
 					WithSecure(cookie.Secure).
-					WithSameParty(cookie.SameParty).
 					WithSameSite(network.CookieSameSite(cookie.SameSite)).
 					WithPriority(network.CookiePriority(cookie.Priority)).
 					Do(ctx)
@@ -537,7 +536,7 @@ func enableLifeCycleEvents() chromedp.ActionFunc {
 
 func navigateAndWaitFor(url string, eventName string) chromedp.ActionFunc {
 	return func(ctx context.Context) error {
-		_, _, _, err := page.Navigate(url).Do(ctx)
+		_, _, _, _, err := page.Navigate(url).Do(ctx)
 		if err != nil {
 			return err
 		}
