@@ -17,7 +17,7 @@ import (
 )
 
 var (
-	timeout    uint64
+	timeout    int64
 	format     string
 	remoteAddr string
 	config     string
@@ -28,7 +28,7 @@ var (
 )
 
 func init() {
-	flag.Uint64Var(&timeout, "timeout", 300, "Screenshot timeout.")
+	flag.Int64Var(&timeout, "timeout", 300, "Screenshot timeout.")
 	flag.StringVar(&format, "format", "png", "Screenshot file format.")
 	flag.StringVar(&remoteAddr, "remote-addr", "", "Headless browser remote address, e.g. 127.0.0.1:9222, wss://example.com/?token=mask-token")
 	flag.StringVar(&config, "config", "", "Path to configuration file.")
@@ -130,6 +130,7 @@ func writeFile(uri string, data []byte) {
 	if strings.HasSuffix(filename, ".json") {
 		filename = strings.TrimSuffix(filename, "json") + "har"
 	}
+	// nolint:gosec
 	if err := os.WriteFile(filename, data, 0o600); err != nil {
 		fmt.Println(uri, "=>", err)
 		return

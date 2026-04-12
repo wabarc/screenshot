@@ -342,7 +342,7 @@ func scrollToBottom(ctx context.Context) chromedp.Action {
 	timeout := 15 * time.Second
 	deadline, ok := ctx.Deadline()
 	if ok {
-		timeout = deadline.Sub(time.Now())
+		timeout = time.Until(deadline)
 		idle := 5 * time.Second
 		if timeout > idle {
 			timeout -= idle
