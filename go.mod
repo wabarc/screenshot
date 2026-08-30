@@ -9,7 +9,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/wabarc/helper v0.0.0-20240906105554-3673068835d4
 	github.com/wabarc/logger v0.0.0-20210730133522-86bd3f31e792
-	golang.org/x/net v0.53.0
+	golang.org/x/net v0.55.0
 	gopkg.in/yaml.v2 v2.4.0
 )
 
@@ -24,7 +24,7 @@ require (
 	github.com/kennygrant/sanitize v1.2.4 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.21 // indirect
-	golang.org/x/sys v0.43.0 // indirect
-	golang.org/x/text v0.36.0 // indirect
+	golang.org/x/sys v0.45.0 // indirect
+	golang.org/x/text v0.37.0 // indirect
 	mvdan.cc/xurls/v2 v2.6.0 // indirect
 )
