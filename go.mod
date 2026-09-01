@@ -5,7 +5,7 @@ go 1.26
 require (
 	github.com/chromedp/cdproto v0.0.0-20250724212937-08a3db8b4327
 	github.com/chromedp/chromedp v0.14.1
-	github.com/gabriel-vasile/mimetype v1.4.1
+	github.com/gabriel-vasile/mimetype v1.4.15
 	github.com/pkg/errors v0.9.1
 	github.com/wabarc/helper v0.0.0-20240906105554-3673068835d4
 	github.com/wabarc/logger v0.0.0-20210730133522-86bd3f31e792
